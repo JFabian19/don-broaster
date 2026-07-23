@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", system-ui, -apple-system, sans-serif;
+  --font-title: "Anton", sans-serif;
+  --font-body: "Poppins", sans-serif;
+  
+  --color-primary: #D6282F;      /* Rojo Broaster */
+  --color-primary-hover: #b81e24;
+  --color-secondary: #F2B33D;    /* Amarillo Mostaza / Dorado Crocante */
+  --color-secondary-hover: #d99a26;
+  --color-dark: #271B1C;         /* Marrón Oscuro / Negro Cálido */
+  --color-light: #FFFDF8;        /* Blanco Crema */
+  
+  --shadow-broaster: 0 10px 30px -5px rgba(214, 40, 47, 0.25);
+  --shadow-gold: 0 10px 25px -5px rgba(242, 179, 61, 0.4);
+}
+
+body {
+  background-color: #FFFDF8;
+  color: #271B1C;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-anton {
+  font-family: 'Anton', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Custom fast-food diner checker pattern background accent */
+.bg-checker-pattern {
+  background-image: radial-gradient(rgba(214, 40, 47, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.bg-diner-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    #D6282F,
+    #D6282F 12px,
+    #c42127 12px,
+    #c42127 24px
+  );
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+  display: flex;
+  width: max-content;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Custom scrollbar hide */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(242, 179, 61, 0.6), 0 0 30px rgba(214, 40, 47, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(242, 179, 61, 0.9), 0 0 45px rgba(214, 40, 47, 0.5);
+  }
+}
+
+.animate-glow {
+  animation: pulse-glow 2.5s infinite;
+}
+
+/* Shimmer effect for promo cards */
+.shimmer-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-badge::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.3) 20%,
+    rgba(255, 255, 255, 0.6) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2.5s infinite;
+  content: '';
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+

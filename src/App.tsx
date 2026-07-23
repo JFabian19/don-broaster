@@ -1,0 +1,987 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  ShoppingBag, 
+  Plus, 
+  Minus, 
+  ChevronRight, 
+  X, 
+  Utensils, 
+  MapPin, 
+  Loader2, 
+  Gift, 
+  Star, 
+  Clock, 
+  Phone, 
+  Search, 
+  Flame, 
+  CheckCircle2, 
+  Sparkles
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SHEET_ID } from './services/googleSheets';
+import { DEFAULT_MENU_DATA, Category, Dish } from './data/menuData';
+
+// ==========================================
+// 📋 CONFIGURACIÓN DE DON BROASTER
+// ==========================================
+const RESTAURANTE_NAME = "Don Broaster";
+const RESTAURANTE_SLOGAN = "Desde 1999 • El Auténtico Sabor de Barrio";
+const WHATSAPP_NUMBER = "51970590336"; // WhatsApp extraído del menú
+const MAPS_LOCATION = "Dammert Muelle, Surquillo";
+const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Dammert+Muelle+Surquillo";
+const MARQUEE_TEXT = "🍗 DESDE 1999 SIRVIENDO SABOR • POLLO BROASTER, SALCHIPAPAS Y COMBOS CONTUNDENTES • ¡PIDE TU FAVORITO EN DON BROASTER! 🔥🍟 ";
+const BIRTHDAY_COPY = "🎉 ¡Registra tu cumpleaños y recibe una sorpresa bien crocante de Don Broaster! 🍗🍟🎁";
+// ==========================================
+
+interface CartItem {
+  nombre: string;
+  precio: string;
+  cantidad: number;
+}
+
+export default function App() {
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_MENU_DATA);
+  const [loading, setLoading] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showSummary, setShowSummary] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("especialidad");
+  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // States for Birthday Form
+  const [showBirthdayForm, setShowBirthdayForm] = useState(false);
+  const [isSubmittingBirthday, setIsSubmittingBirthday] = useState(false);
+  const [birthdaySuccess, setBirthdaySuccess] = useState(false);
+  const [birthdayData, setBirthdayData] = useState({
+    nombre: '',
+    telefono: '',
+    fechaNacimiento: '',
+    distrito: 'Surquillo',
+    correo: ''
+  });
+
+  // States for Review Form
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [reviewData, setReviewData] = useState({
+    estrellasMozo: 5,
+    estrellasComida: 5,
+    comentario: ''
+  });
+
+  // Toast notifications
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!SHEET_ID) return;
+      setLoading(true);
+      try {
+        const [cats, dishes] = await Promise.all([
+          fetchSheetData<SheetCategory>('Categorías'),
+          fetchSheetData<SheetDish>('Platos')
+        ]);
+
+        if (cats.length > 0 || dishes.length > 0) {
+          const formattedCategories: Category[] = cats.map(c => ({
+            id: c.nombre.toLowerCase().replace(/\s+/g, '-'),
+            nombre: c.nombre,
+            items: dishes
+              .filter(d => d.categoría === c.nombre)
+              .map(d => ({
+                nombre: d['nombre del plato'],
+                descripcion: d.descripción,
+                precio: d.precio,
+                imagen: d['URL de imagen'] || undefined
+              }))
+          }));
+          setCategories(formattedCategories);
+          if (formattedCategories.length > 0) {
+            setActiveCategory(formattedCategories[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading data from sheets:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const cartCount = useMemo(() => cart.reduce((acc, item) => acc + item.cantidad, 0), [cart]);
+
+  const addToCart = (dish: Dish, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCart(prev => {
+      const existing = prev.find(i => i.nombre === dish.nombre && i.precio === dish.precio);
+      if (existing) {
+        return prev.map(i =>
+          (i.nombre === dish.nombre && i.precio === dish.precio)
+            ? { ...i, cantidad: i.cantidad + 1 }
+            : i
+        );
+      }
+      return [...prev, { nombre: dish.nombre, precio: dish.precio, cantidad: 1 }];
+    });
+    showToast(`¡${dish.nombre} agregado al pedido! 🍗`);
+  };
+
+  const updateQuantity = (nombre: string, precio: string, delta: number) => {
+    setCart(prev =>
+      prev
+        .map(i => {
+          if (i.nombre === nombre && i.precio === precio) {
+            const newQty = i.cantidad + delta;
+            return newQty > 0 ? { ...i, cantidad: newQty } : null;
+          }
+          return i;
+        })
+        .filter(Boolean) as CartItem[]
+    );
+  };
+
+  const calculateTotal = () => {
+    return cart.reduce((acc, item) => {
+      const cleanPrice = item.precio.replace(/[^\d.]/g, '');
+      const num = parseFloat(cleanPrice) || 0;
+      return acc + num * item.cantidad;
+    }, 0);
+  };
+
+  const sendToWhatsApp = () => {
+    if (cart.length === 0) return;
+    const total = calculateTotal();
+    let message = `*¡Hola Don Broaster! 🍗*\n*Quisiera realizar el siguiente pedido:*\n\n`;
+    cart.forEach(item => {
+      message += `• *${item.cantidad}x* ${item.nombre} — ${item.precio}\n`;
+    });
+    message += `\n💰 *TOTAL DEL PEDIDO: S/.${total.toFixed(2)}*\n\n📍 *Ubicación de entrega / consulta:*`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const scrollToCategory = (catId: string) => {
+    setActiveCategory(catId);
+    const el = document.getElementById(`cat-${catId}`);
+    if (el) {
+      const offset = 140;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = el.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return categories;
+    const q = searchQuery.toLowerCase();
+    return categories.map(cat => ({
+      ...cat,
+      items: cat.items.filter(item => 
+        item.nombre.toLowerCase().includes(q) || 
+        (item.descripcion && item.descripcion.toLowerCase().includes(q))
+      )
+    })).filter(cat => cat.items.length > 0);
+  }, [categories, searchQuery]);
+
+  const handleBirthdaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingBirthday(true);
+    const success = await submitSheetData('Cumpleaños', {
+      timestamp: new Date().toLocaleString('es-PE'),
+      nombre: birthdayData.nombre,
+      telefono: birthdayData.telefono,
+      fechaNacimiento: birthdayData.fechaNacimiento,
+      distrito: birthdayData.distrito,
+      correo: birthdayData.correo || 'No indicado'
+    });
+    
+    setIsSubmittingBirthday(false);
+    if (success) {
+      setBirthdaySuccess(true);
+      setTimeout(() => {
+        setShowBirthdayForm(false);
+        setBirthdaySuccess(false);
+        setBirthdayData({ nombre: '', telefono: '', fechaNacimiento: '', distrito: 'Surquillo', correo: '' });
+      }, 3000);
+    } else {
+      setBirthdaySuccess(true);
+      setTimeout(() => {
+        setShowBirthdayForm(false);
+        setBirthdaySuccess(false);
+        setBirthdayData({ nombre: '', telefono: '', fechaNacimiento: '', distrito: 'Surquillo', correo: '' });
+      }, 2500);
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingReview(true);
+    await submitSheetData('Reseñas', {
+      timestamp: new Date().toLocaleString('es-PE'),
+      estrellasMozo: reviewData.estrellasMozo,
+      estrellasComida: reviewData.estrellasComida,
+      comentario: reviewData.comentario || 'Sin comentarios'
+    });
+    
+    setIsSubmittingReview(false);
+    setReviewSuccess(true);
+    setTimeout(() => {
+      setShowReviewForm(false);
+      setReviewSuccess(false);
+      setReviewData({ estrellasMozo: 5, estrellasComida: 5, comentario: '' });
+    }, 2500);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FFFDF8]">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-[#F2B33D] border-t-[#D6282F] rounded-full animate-spin"></div>
+          <span className="absolute inset-0 flex items-center justify-center text-2xl">🍗</span>
+        </div>
+        <p className="font-anton text-[#D6282F] tracking-wider uppercase text-lg mt-4">Don Broaster</p>
+        <p className="font-poppins text-xs text-[#271B1C]/70">Cargando el sabor crocante desde 1999...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FFFDF8] text-[#271B1C] font-poppins selection:bg-[#D6282F] selection:text-white pb-28">
+      
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-[#271B1C] text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-[#F2B33D]/50 text-sm font-semibold"
+          >
+            <Sparkles className="w-4 h-4 text-[#F2B33D]" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MARQUEE BANNER TOP */}
+      <div className="bg-[#D6282F] text-[#FFFDF8] overflow-hidden py-2 text-xs md:text-sm font-anton tracking-wider uppercase shadow-inner border-b border-[#271B1C]/10">
+        <div className="animate-marquee whitespace-nowrap flex items-center gap-4">
+          <span>{MARQUEE_TEXT}</span>
+          <span>{MARQUEE_TEXT}</span>
+        </div>
+      </div>
+
+      {/* HEADER SECTION */}
+      <header className="sticky top-0 z-40 bg-[#FFFDF8]/95 backdrop-blur-md border-b border-[#D6282F]/15 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          
+          {/* Logo & Name */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#D6282F] to-[#b81e24] rounded-2xl flex items-center justify-center text-2xl shadow-md border-2 border-[#F2B33D] transform -rotate-3 hover:rotate-0 transition-transform">
+              🍗
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-anton text-2xl md:text-3xl text-[#D6282F] leading-none tracking-wide drop-shadow-sm">
+                  DON BROASTER
+                </h1>
+                <span className="bg-[#F2B33D] text-[#271B1C] text-[10px] font-anton px-1.5 py-0.5 rounded shadow-sm">
+                  1999
+                </span>
+              </div>
+              <p className="text-[11px] md:text-xs text-[#271B1C]/80 font-medium flex items-center gap-1">
+                <Flame className="w-3 h-3 text-[#D6282F] fill-[#D6282F]" />
+                {RESTAURANTE_SLOGAN}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBirthdayForm(true)}
+              className="hidden sm:flex items-center gap-1.5 bg-[#F2B33D] hover:bg-[#d99a26] text-[#271B1C] px-3 py-1.5 rounded-full font-semibold text-xs transition shadow-sm border border-[#271B1C]/10"
+              title="Registra tu cumpleaños"
+            >
+              <Gift className="w-3.5 h-3.5 text-[#D6282F]" />
+              <span>Cumpleaños</span>
+            </button>
+
+            <button
+              onClick={() => setShowReviewForm(true)}
+              className="p-2 rounded-full text-[#D6282F] hover:bg-[#D6282F]/10 transition"
+              title="Dejar opinión"
+            >
+              <Star className="w-5 h-5 fill-[#F2B33D] text-[#F2B33D]" />
+            </button>
+
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-[#25D366] text-white p-2 rounded-full hover:scale-105 transition shadow"
+              title="Contacto WhatsApp"
+            >
+              <Phone className="w-4 h-4 fill-white" />
+            </a>
+          </div>
+        </div>
+
+        {/* CATEGORY NAV TABS */}
+        <div className="max-w-4xl mx-auto px-4 py-2 border-t border-[#271B1C]/5">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => scrollToCategory(cat.id)}
+                  className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-[#D6282F] text-white shadow-md shadow-[#D6282F]/30 scale-105'
+                      : 'bg-white text-[#271B1C] border border-[#271B1C]/15 hover:border-[#D6282F] hover:text-[#D6282F]'
+                  }`}
+                >
+                  <span>{cat.icono || '🍗'}</span>
+                  <span>{cat.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      {/* HERO BANNER SECTION */}
+      <section className="relative max-w-4xl mx-auto px-4 pt-4 pb-2">
+        <div className="bg-gradient-to-r from-[#D6282F] via-[#c42127] to-[#271B1C] rounded-3xl p-6 text-white shadow-xl overflow-hidden relative border-2 border-[#F2B33D]/40">
+          {/* Decorative shapes */}
+          <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-[#F2B33D]/20 rounded-full blur-2xl"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full"></div>
+
+          <div className="relative z-10 max-w-xl">
+            <span className="inline-flex items-center gap-1 bg-[#F2B33D] text-[#271B1C] font-anton text-xs uppercase px-2.5 py-1 rounded-md mb-2 shadow-sm">
+              🔥 ¡Chaufa Gratis hasta agotar stock!
+            </span>
+            <h2 className="font-anton text-3xl sm:text-4xl leading-none text-[#FFFDF8] tracking-wide mb-2">
+              PRESAS CROCANTES Y COMBOS CONTUNDENTES
+            </h2>
+            <p className="text-xs sm:text-sm text-white/90 font-normal mb-4">
+              Pollo Broaster con sabor criollo de barrio, salchipapas cargadas y adicionales a tu gusto. ¡Pide directo por WhatsApp!
+            </p>
+
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <div className="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 border border-white/20">
+                <Clock className="w-3 h-3 text-[#F2B33D]" />
+                <span>Lun-Sáb: 6:00 PM - 11:00 PM</span>
+              </div>
+              <a
+                href={MAPS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 px-3 py-1 rounded-full flex items-center gap-1 border border-white/20 transition"
+              >
+                <MapPin className="w-3 h-3 text-[#F2B33D]" />
+                <span>{MAPS_LOCATION}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* BIRTHDAY PROMO BANNER BUTTON */}
+        <div 
+          onClick={() => setShowBirthdayForm(true)}
+          className="mt-3 bg-gradient-to-r from-[#F2B33D] to-[#e5a228] text-[#271B1C] rounded-2xl p-3 px-4 shadow-md flex items-center justify-between cursor-pointer hover:opacity-95 transition border border-[#271B1C]/10"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-bounce">🎁</span>
+            <div>
+              <p className="font-bold text-xs sm:text-sm leading-snug">
+                ¿Estás de Cumpleaños?
+              </p>
+              <p className="text-[11px] text-[#271B1C]/80 font-medium">
+                Regístrate y recibe una sorpresa bien crocante de Don Broaster
+              </p>
+            </div>
+          </div>
+          <span className="bg-[#D6282F] text-white font-anton text-xs px-3 py-1.5 rounded-xl shadow-sm whitespace-nowrap">
+            ¡Registrarme!
+          </span>
+        </div>
+      </section>
+
+      {/* SEARCH BAR */}
+      <section className="max-w-4xl mx-auto px-4 py-3">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#271B1C]/40" />
+          <input
+            type="text"
+            placeholder="Buscar salchipapas, Don Mega, encuentro, pecho..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-[#271B1C]/15 rounded-2xl pl-10 pr-10 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#D6282F] focus:ring-2 focus:ring-[#D6282F]/20 shadow-sm transition"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#271B1C]/50 hover:text-[#D6282F]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* MAIN MENU DISHES */}
+      <main className="max-w-4xl mx-auto px-4 py-2 space-y-8">
+        {filteredCategories.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-[#271B1C]/20">
+            <Utensils className="w-12 h-12 mx-auto text-[#D6282F]/30 mb-2" />
+            <p className="font-anton text-lg text-[#271B1C]">No se encontraron platos</p>
+            <p className="text-xs text-[#271B1C]/60">Intenta buscar otro plato o limpia el buscador.</p>
+          </div>
+        ) : (
+          filteredCategories.map((category) => (
+            <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-36">
+              
+              {/* Category Header */}
+              <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-[#D6282F]/20">
+                <span className="text-2xl p-2 bg-[#D6282F]/10 rounded-2xl">{category.icono || '🍗'}</span>
+                <div>
+                  <h3 className="font-anton text-2xl sm:text-3xl text-[#D6282F] uppercase tracking-wide">
+                    {category.nombre}
+                  </h3>
+                  {category.descripcion && (
+                    <p className="text-xs text-[#271B1C]/70 font-medium">{category.descripcion}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Items Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {category.items.map((dish, idx) => (
+                  <motion.div
+                    key={`${dish.nombre}-${idx}`}
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => setSelectedDish(dish)}
+                    className="bg-white rounded-2xl border border-[#271B1C]/10 shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col justify-between group relative"
+                  >
+                    {/* Dish Image / Header */}
+                    <div className="relative h-44 w-full bg-[#271B1C]/5 overflow-hidden">
+                      {dish.imagen ? (
+                        <img
+                          src={dish.imagen}
+                          alt={dish.nombre}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#D6282F]/5 to-[#F2B33D]/10">
+                          <Utensils className="w-10 h-10 text-[#D6282F]/40 mb-1" />
+                          <span className="font-anton text-xs text-[#D6282F]/60">Don Broaster</span>
+                        </div>
+                      )}
+
+                      {/* Badge if present */}
+                      {dish.badge && (
+                        <span className="absolute top-2 left-2 bg-[#D6282F] text-white text-[10px] font-anton px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider shimmer-badge">
+                          {dish.badge}
+                        </span>
+                      )}
+
+                      {/* Nota small tag */}
+                      {dish.nota && (
+                        <span className="absolute bottom-2 right-2 bg-[#271B1C]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                          {dish.nota}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <h4 className="font-poppins font-bold text-base sm:text-lg text-[#271B1C] group-hover:text-[#D6282F] transition-colors leading-snug">
+                            {dish.nombre}
+                          </h4>
+                          <span className="font-anton text-lg sm:text-xl text-[#D6282F] whitespace-nowrap bg-[#D6282F]/5 px-2 py-0.5 rounded-lg border border-[#D6282F]/10">
+                            {dish.precio}
+                          </span>
+                        </div>
+                        {dish.descripcion && (
+                          <p className="text-xs text-[#271B1C]/75 font-normal leading-relaxed line-clamp-2 mb-3">
+                            {dish.descripcion}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Action Button */}
+                      <div className="pt-2 border-t border-[#271B1C]/5 flex items-center justify-between">
+                        <span className="text-[11px] text-[#271B1C]/50 font-medium">Ver detalle</span>
+                        {dish.precio !== "Gratis hasta agotar stock" && (
+                          <button
+                            onClick={(e) => addToCart(dish, e)}
+                            className="bg-[#D6282F] hover:bg-[#b81e24] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition active:scale-95"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Agregar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </main>
+
+      {/* DISH DETAIL MODAL */}
+      <AnimatePresence>
+        {selectedDish && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative border-2 border-[#F2B33D]/50"
+            >
+              <button
+                onClick={() => setSelectedDish(null)}
+                className="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black text-white p-2 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="h-64 bg-[#271B1C]/5 relative">
+                {selectedDish.imagen ? (
+                  <img
+                    src={selectedDish.imagen}
+                    alt={selectedDish.nombre}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#D6282F]/10">
+                    <Utensils className="w-16 h-16 text-[#D6282F]" />
+                  </div>
+                )}
+                {selectedDish.badge && (
+                  <span className="absolute bottom-3 left-3 bg-[#D6282F] text-white font-anton text-xs px-3 py-1 rounded-full shadow-md">
+                    {selectedDish.badge}
+                  </span>
+                )}
+              </div>
+
+              <div className="p-6">
+                <div className="flex justify-between items-start gap-4 mb-2">
+                  <h3 className="font-poppins font-extrabold text-2xl text-[#271B1C]">
+                    {selectedDish.nombre}
+                  </h3>
+                  <span className="font-anton text-2xl text-[#D6282F]">
+                    {selectedDish.precio}
+                  </span>
+                </div>
+
+                {selectedDish.nota && (
+                  <span className="inline-block bg-[#F2B33D]/20 text-[#271B1C] font-semibold text-xs px-2.5 py-1 rounded-md mb-3">
+                    📌 {selectedDish.nota}
+                  </span>
+                )}
+
+                <p className="text-sm text-[#271B1C]/80 leading-relaxed mb-6 font-normal">
+                  {selectedDish.descripcion || "Preparación contundente con el sabor único y crocante de Don Broaster."}
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSelectedDish(null)}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#271B1C] font-bold py-3 rounded-2xl transition text-xs sm:text-sm"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => {
+                      addToCart(selectedDish);
+                      setSelectedDish(null);
+                    }}
+                    className="flex-1 bg-[#D6282F] hover:bg-[#b81e24] text-white font-bold py-3 rounded-2xl transition shadow-lg shadow-[#D6282F]/30 flex items-center justify-center gap-2 text-xs sm:text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar al Pedido</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING CART BAR */}
+      {cartCount > 0 && !showSummary && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-40"
+        >
+          <button
+            onClick={() => setShowSummary(true)}
+            className="w-full bg-[#D6282F] hover:bg-[#b81e24] text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border-2 border-[#F2B33D] transition active:scale-98"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-[#F2B33D] text-[#271B1C] w-9 h-9 rounded-xl flex items-center justify-center font-anton text-lg shadow-sm">
+                {cartCount}
+              </div>
+              <div className="text-left">
+                <p className="font-anton text-sm tracking-wider uppercase text-white/90">Tu Pedido</p>
+                <p className="text-xs text-white/80 font-medium">Click para ver detalle</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="font-anton text-2xl text-[#F2B33D]">
+                S/.{calculateTotal().toFixed(2)}
+              </span>
+              <ChevronRight className="w-5 h-5 text-white" />
+            </div>
+          </button>
+        </motion.div>
+      )}
+
+      {/* CART OVERLAY / SUMMARY MODAL */}
+      <AnimatePresence>
+        {showSummary && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border-t-4 border-[#D6282F]"
+            >
+              {/* Header */}
+              <div className="p-4 bg-[#FFFDF8] border-b border-[#271B1C]/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-[#D6282F]" />
+                  <h3 className="font-anton text-xl text-[#271B1C] uppercase tracking-wide">
+                    Resumen de Pedido
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowSummary(false)}
+                  className="p-1 rounded-full text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Items List */}
+              <div className="p-4 overflow-y-auto flex-1 space-y-3">
+                {cart.length === 0 ? (
+                  <p className="text-center text-sm text-gray-500 py-8">Tu carrito está vacío.</p>
+                ) : (
+                  cart.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between bg-[#FFFDF8] p-3 rounded-2xl border border-[#271B1C]/10"
+                    >
+                      <div>
+                        <p className="font-bold text-sm text-[#271B1C]">{item.nombre}</p>
+                        <p className="text-xs text-[#D6282F] font-semibold">{item.precio}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(item.nombre, item.precio, -1)}
+                          className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="font-anton text-sm w-5 text-center">{item.cantidad}</span>
+                        <button
+                          onClick={() => updateQuantity(item.nombre, item.precio, 1)}
+                          className="w-7 h-7 rounded-lg bg-[#D6282F] text-white flex items-center justify-center hover:bg-[#b81e24]"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer Checkout */}
+              {cart.length > 0 && (
+                <div className="p-4 bg-[#FFFDF8] border-t border-[#271B1C]/10 space-y-3">
+                  <div className="flex justify-between items-center text-base font-bold text-[#271B1C]">
+                    <span>Total Estimado:</span>
+                    <span className="font-anton text-2xl text-[#D6282F]">
+                      S/.{calculateTotal().toFixed(2)}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={sendToWhatsApp}
+                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/30 text-sm transition"
+                  >
+                    <Phone className="w-4 h-4 fill-white" />
+                    <span>Enviar Pedido por WhatsApp</span>
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* BIRTHDAY FORM MODAL */}
+      <AnimatePresence>
+        {showBirthdayForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border-4 border-[#F2B33D]"
+            >
+              <button
+                onClick={() => setShowBirthdayForm(false)}
+                className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center mb-4">
+                <span className="text-4xl inline-block mb-1">🎉</span>
+                <h3 className="font-anton text-2xl text-[#D6282F]">REGISTRA TU CUMPLEAÑOS</h3>
+                <p className="text-xs text-gray-600 font-medium mt-1">
+                  {BIRTHDAY_COPY}
+                </p>
+              </div>
+
+              {birthdaySuccess ? (
+                <div className="text-center py-6 space-y-3">
+                  <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto animate-bounce" />
+                  <p className="font-anton text-xl text-[#271B1C]">¡REGISTRO EXITOSO!</p>
+                  <p className="text-xs text-gray-600">
+                    ¡Gracias por registrarte! Te avisaremos para tu cumpleaños con una gran sorpresa crocante 🍗🍟
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleBirthdaySubmit} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Nombre Completo *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Juan Pérez"
+                      value={birthdayData.nombre}
+                      onChange={e => setBirthdayData({ ...birthdayData, nombre: e.target.value })}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#D6282F]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Teléfono / WhatsApp *</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Ej. 987654321"
+                      value={birthdayData.telefono}
+                      onChange={e => setBirthdayData({ ...birthdayData, telefono: e.target.value })}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#D6282F]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Fecha de Nacimiento *</label>
+                    <input
+                      type="date"
+                      required
+                      value={birthdayData.fechaNacimiento}
+                      onChange={e => setBirthdayData({ ...birthdayData, fechaNacimiento: e.target.value })}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#D6282F]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Distrito</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Surquillo, Miraflores..."
+                      value={birthdayData.distrito}
+                      onChange={e => setBirthdayData({ ...birthdayData, distrito: e.target.value })}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#D6282F]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingBirthday}
+                    className="w-full bg-[#D6282F] hover:bg-[#b81e24] text-white font-anton text-base py-3 rounded-xl shadow-md transition mt-2 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingBirthday ? <Loader2 className="w-4 h-4 animate-spin" /> : '¡REGISTRAR CUMPLEAÑOS! 🎁'}
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* REVIEW FORM MODAL */}
+      <AnimatePresence>
+        {showReviewForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border-2 border-[#D6282F]"
+            >
+              <button
+                onClick={() => setShowReviewForm(false)}
+                className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center mb-4">
+                <span className="text-4xl inline-block mb-1">⭐</span>
+                <h3 className="font-anton text-2xl text-[#D6282F]">TU OPINIÓN ES IMPORTANTE</h3>
+                <p className="text-xs text-gray-600 font-medium">Ayúdanos a seguir mejorando para ti</p>
+              </div>
+
+              {reviewSuccess ? (
+                <div className="text-center py-6 space-y-3">
+                  <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto animate-bounce" />
+                  <p className="font-anton text-xl text-[#271B1C]">¡MUCHAS GRACIAS!</p>
+                  <p className="text-xs text-gray-600">Tu opinión nos ayuda a mantener el auténtico sabor crocante de Don Broaster.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleReviewSubmit} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Atención y Servicio</label>
+                    <div className="flex gap-2 justify-center py-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewData({ ...reviewData, estrellasMozo: star })}
+                          className="p-1"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= reviewData.estrellasMozo
+                                ? 'fill-[#F2B33D] text-[#F2B33D]'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Sabor y Calidad de Comida</label>
+                    <div className="flex gap-2 justify-center py-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewData({ ...reviewData, estrellasComida: star })}
+                          className="p-1"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= reviewData.estrellasComida
+                                ? 'fill-[#F2B33D] text-[#F2B33D]'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Comentario (opcional)</label>
+                    <textarea
+                      rows={3}
+                      placeholder="¡Escribe tu comentario sobre tu experiencia!"
+                      value={reviewData.comentario}
+                      onChange={e => setReviewData({ ...reviewData, comentario: e.target.value })}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#D6282F]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="w-full bg-[#D6282F] hover:bg-[#b81e24] text-white font-anton text-base py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ENVIAR OPINIÓN ⭐'}
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FOOTER */}
+      <footer className="mt-16 bg-[#271B1C] text-white pt-10 pb-16 px-4 border-t-4 border-[#D6282F]">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🍗</span>
+              <h4 className="font-anton text-2xl text-[#F2B33D]">DON BROASTER</h4>
+            </div>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Pollo broaster crocante estilo barrio, salchipapas contundentes y combinaciones abundantes desde 1999.
+            </p>
+          </div>
+
+          <div>
+            <h5 className="font-anton text-lg text-[#F2B33D] mb-2 uppercase">Horario de Atención</h5>
+            <p className="text-xs text-gray-300">Lunes a Sábado: 6:00 p. m. - 11:00 p. m.</p>
+            <p className="text-xs text-gray-400 mt-1">Surquillo, Lima - Perú</p>
+          </div>
+
+          <div>
+            <h5 className="font-anton text-lg text-[#F2B33D] mb-2 uppercase">Ubicación & Contacto</h5>
+            <p className="text-xs text-gray-300 mb-2">📍 {MAPS_LOCATION}</p>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-[#25D366] text-white text-xs font-bold px-3 py-2 rounded-xl shadow hover:bg-[#20bd5a] transition"
+            >
+              <Phone className="w-4 h-4 fill-white" />
+              <span>WhatsApp: 970 590 336</span>
+            </a>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto border-t border-white/10 mt-8 pt-6 text-center text-xs text-gray-400">
+          © {new Date().getFullYear()} Don Broaster. Todos los derechos reservados.
+        </div>
+      </footer>
+
+    </div>
+  );
+}
