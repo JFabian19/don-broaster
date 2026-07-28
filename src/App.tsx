@@ -652,8 +652,8 @@ export default function App() {
                   onClick={(e) => openDishModal(dish, e)}
                   className="bg-white rounded-2xl border border-[#271B1C]/10 shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col justify-between group relative"
                 >
-                  {/* Dish Image / Header */}
-                  <div className="relative h-44 w-full bg-[#271B1C]/5 overflow-hidden">
+                  {/* Dish Image / Header (1x1 Square Aspect Ratio) */}
+                  <div className="relative aspect-square w-full bg-[#271B1C]/5 overflow-hidden">
                     {dish.imagen ? (
                       <img
                         src={dish.imagen}

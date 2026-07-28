@@ -27,7 +27,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Don Mega",
         descripcion: "Combinación especial preparada con una presa de pollo a elección entre encuentro o ala, hot dog, chorizo sabroso y huevo frito.",
         precio: "S/.20.00",
-        imagen: "/don-mega.png",
+        imagen: "/don-mega.webp",
         badge: "⭐ El Más Vendido",
         popular: true,
         nota: "Encuentro o ala"
@@ -36,7 +36,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Mostrito",
         descripcion: "Combinación potente de arroz chaufa oriental preparado en wok, abundante porción de papas fritas y jugosa presa broaster crocante.",
         precio: "S/.18.00",
-        imagen: "/mostrito.png",
+        imagen: "/mostrito.webp",
         badge: "🔥 Favorito de Barrio",
         popular: true
       }
@@ -52,7 +52,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Pecho",
         descripcion: "Jugosa presa de pecho de pollo empanizada y frita al crujiente estilo broaster. ¡Incluye chaufa gratis hasta agotar stock!",
         precio: "S/.16.00",
-        imagen: "/pecho.png",
+        imagen: "/pecho.webp",
         badge: "🎁 Chaufa Gratis",
         popular: true,
         nota: "Hasta agotar stock"
@@ -61,7 +61,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Encuentro",
         descripcion: "Presa de encuentro de pollo tradicional, súper jugosa por dentro y extra crocante por fuera. ¡Incluye chaufa gratis hasta agotar stock!",
         precio: "S/.14.00",
-        imagen: "/encuentro.png",
+        imagen: "/encuentro.webp",
         badge: "🎁 Chaufa Gratis",
         popular: true,
         nota: "Hasta agotar stock"
@@ -70,7 +70,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Alota",
         descripcion: "Pieza de pollo seleccionada «Alota» estilo broaster dorado crocante. ¡Incluye chaufa gratis hasta agotar stock!",
         precio: "S/.13.50",
-        imagen: "/alota.png",
+        imagen: "/alota.webp",
         badge: "🎁 Chaufa Gratis",
         nota: "Hasta agotar stock"
       },
@@ -78,7 +78,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Salchipapa Especial",
         descripcion: "Generosa porción de papas fritas crocantes acompañadas con salchicha dorada, abundante chorizo parrillero y huevo frito montado.",
         precio: "S/.15.00",
-        imagen: "/salchipapa-especial.png",
+        imagen: "/salchipapa-especial.webp",
         badge: "⭐ Súper Cargada",
         popular: true
       },
@@ -86,7 +86,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Salchipapa",
         descripcion: "Combinación icónica de papas fritas amarillas crujientes con abundantes rodajas de salchicha dorada.",
         precio: "S/.11.00",
-        imagen: "/salchipapa.png",
+        imagen: "/salchipapa.webp",
         badge: "🔥 Clásico de Barrio",
         popular: true
       }
@@ -102,7 +102,7 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Presa de pollo",
         descripcion: "Presa adicional de pollo frito a elección entre encuentro o ala.",
         precio: "S/.11.00",
-        imagen: "/presa-de-pollo.png",
+        imagen: "/presa-de-pollo.webp",
         nota: "Encuentro o ala"
       },
       {
@@ -115,25 +115,25 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nombre: "Tocino",
         descripcion: "Porción de tocino crocante frito al momento.",
         precio: "S/.4.00",
-        imagen: "/tocino.jpg"
+        imagen: "/tocino.webp"
       },
       {
         nombre: "Chorizo",
         descripcion: "Porción adicional de chorizo parrillero dorado.",
         precio: "S/.3.00",
-        imagen: "/chorizo.jpg"
+        imagen: "/chorizo.webp"
       },
       {
         nombre: "Plátano",
         descripcion: "Porción adicional de plátano frito doradito.",
         precio: "S/.3.00",
-        imagen: "/platano.jpg"
+        imagen: "/platano.webp"
       },
       {
         nombre: "Hot dog",
         descripcion: "Porción adicional de frankfurter frito.",
         precio: "S/.2.00",
-        imagen: "/hot-dog.png"
+        imagen: "/hot-dog.webp"
       },
       {
         nombre: "Huevo",
