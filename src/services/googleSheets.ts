@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 
 // Coloca aquí tu ID de Google Sheets (lo encuentras en la URL de tu hoja de cálculo)
-export const SHEET_ID = '';
+export const SHEET_ID = '14ZzsnBJCOctIBkMBmimOoraHGORjwhQYkCYccs_7Wwk';
 
 export interface SheetDish {
   categoría: string;
@@ -38,7 +38,7 @@ export const fetchSheetData = async <T>(sheetName: string): Promise<T[]> => {
 
 // Configura aquí la URL de tu Google Apps Script Web App para poder enviar datos
 // Instrucciones: Crea un Apps Script, pega el código que te di, impleméntalo como Aplicación Web y pega la URL de ejecución aquí.
-export const WEB_APP_URL = '';
+export const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyoa7S8kHID93O13t9zW-t_I2z7AB9hb-qGCcA_Ogz-8AZT2kz_QZEsfYMIOVP4hAZw5g/exec';
 
 export const submitSheetData = async (sheetName: string, data: any): Promise<boolean> => {
   if (!WEB_APP_URL) {
@@ -47,16 +47,18 @@ export const submitSheetData = async (sheetName: string, data: any): Promise<boo
   }
 
   try {
-    const response = await fetch(WEB_APP_URL, {
+    const payload = JSON.stringify({
+      sheetName,
+      data,
+    });
+
+    await fetch(WEB_APP_URL, {
       method: 'POST',
-      mode: 'no-cors', // Importante para evitar problemas de CORS con Apps Script
+      mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain;charset=utf-8',
       },
-      body: JSON.stringify({
-        sheetName,
-        data,
-      }),
+      body: payload,
     });
     
     return true;

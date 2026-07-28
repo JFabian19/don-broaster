@@ -310,8 +310,32 @@ export default function App() {
       return;
     }
 
+    const orderId = `#DB-${Math.floor(1000 + Math.random() * 9000)}`;
+    const timestamp = new Date().toLocaleString('es-PE');
     const total = calculateTotal();
-    let message = `*¡NUEVO PEDIDO - DON BROASTER! 🍗*\n\n`;
+
+    const orderSummary = cart.map(item => {
+      let desc = `${item.cantidad}x ${item.nombre}`;
+      if (item.crema) desc += ` (Crema: ${item.crema})`;
+      if (item.adicionales.length > 0) desc += ` (Adic: ${item.adicionales.join(', ')})`;
+      if (item.observaciones) desc += ` [Obs: ${item.observaciones}]`;
+      return desc;
+    }).join(' | ');
+
+    // Registrar pedido en Google Sheets con estado PENDIENTE
+    submitSheetData('Pedidos', {
+      orderId: orderId,
+      timestamp: timestamp,
+      cliente: checkoutData.nombre.trim(),
+      direccion: checkoutData.direccion.trim() || checkoutData.gpsLink,
+      metodoPago: checkoutData.metodoPago + (checkoutData.metodoPago === 'Efectivo' && checkoutData.montoEfectivo.trim() ? ` (S/.${checkoutData.montoEfectivo.trim()})` : ''),
+      detalle: orderSummary,
+      total: `S/.${total.toFixed(2)}`,
+      estado: 'PENDIENTE'
+    });
+
+    let message = `*¡NUEVO PEDIDO ${orderId} - DON BROASTER! 🍗*\n\n`;
+    message += `🆔 *Código de Pedido:* ${orderId}\n`;
     message += `👤 *Cliente:* ${checkoutData.nombre.trim()}\n`;
     
     if (checkoutData.direccion.trim()) {
@@ -355,6 +379,7 @@ export default function App() {
     
     setShowCheckoutModal(false);
     setShowSummary(false);
+    setCart([]);
   };
 
   const scrollToCategory = (catId: string) => {

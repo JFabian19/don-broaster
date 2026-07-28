@@ -1,0 +1,3 @@
+ID Pedido,Fecha / Hora,Cliente,Dirección / GPS,Método Pago,Detalle,Total,Estado
+#DB-1042,28/07/2026 15:50:00,Juan Pérez,Av. Angamos 450 Surquillo,Yape,1x Don Mega (Crema: Ají) | 1x Inca Kola 1.5L,S/.29.00,PENDIENTE
+#DB-1043,28/07/2026 16:05:00,María López,Jr. Dante 120 Surquillo,Efectivo (S/.50.00),1x Mostrito (Crema: Tártara),S/.18.00,CONFIRMADO
