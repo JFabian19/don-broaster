@@ -142,22 +142,5 @@ export const DEFAULT_MENU_DATA: Category[] = [
         imagen: "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80"
       }
     ]
-  },
-  {
-    id: "promociones",
-    nombre: "Promociones",
-    icono: "🔥",
-    descripcion: "Promociones especiales y regalos de la casa.",
-    items: [
-      {
-        nombre: "Chaufa gratis",
-        descripcion: "Arroz chaufa oriental preparado en wok gratis con tu pedido de plato broaster. Válido sólo con plato broaster.",
-        precio: "¡Gratis!",
-        imagen: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
-        badge: "🎉 Regalo de la casa",
-        popular: true,
-        nota: "Con plato Broaster"
-      }
-    ]
   }
 ];

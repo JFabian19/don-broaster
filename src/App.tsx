@@ -22,12 +22,13 @@ import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SHEET_ID } f
 import { DEFAULT_MENU_DATA, Category, Dish } from './data/menuData';
 
 // ==========================================
+// ==========================================
 // 📋 CONFIGURACIÓN DE DON BROASTER
 // ==========================================
 const RESTAURANTE_NAME = "Don Broaster";
-const RESTAURANTE_SLOGAN = "Desde 1999 • El Auténtico Sabor de Barrio";
+const RESTAURANTE_SLOGAN = "Desde 1999 • Se prepara con cariño";
 const WHATSAPP_NUMBER = "51970590336"; 
-const FACEBOOK_URL = "https://www.facebook.com/profile.php?id=100034760302246";
+const TIKTOK_URL = "https://www.tiktok.com/@don.broaster";
 const MAPS_LOCATION = "Pl. de la Composición 102, Surquillo";
 const MAPS_URL = "https://www.google.com/maps/place/Pl.+de+la+Composici%C3%B3n+102,+Surquillo+15047/@-12.1071,-77.0249,17z/data=!4m6!3m5!1s0x9105c86d2f2e6ccb:0x76723896f31be44!8m2!3d-12.1070296!4d-77.0243948!16s%2Fg%2F11rzcvq3yp!5m1!1e1?hl=es&entry=ttu&g_ep=EgoyMDI2MDcyNi4wIKXMDSoASAFQAw%3D%3D";
 const MARQUEE_TEXT = "🍗 DESDE 1999 SIRVIENDO SABOR • POLLO BROASTER, SALCHIPAPAS Y COMBOS CONTUNDENTES • ¡PIDE TU FAVORITO EN DON BROASTER! 🔥🍟 ";
@@ -57,9 +58,9 @@ const ADICIONALES_OPCIONES = [
   { nombre: "Tocino", precio: 4.00 }
 ];
 
-const FacebookIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 2.44 6.34 6.34 0 0 0-1.396 3.993 6.345 6.345 0 0 0 6.344 6.345 6.345 6.345 0 0 0 6.345-6.345V9.083a8.21 8.21 0 0 0 4.761 1.503V7.14a4.814 4.814 0 0 1-1.427-.454z"/>
   </svg>
 );
 
@@ -74,6 +75,7 @@ interface CartItem {
   cantidad: number;
   crema: string;
   adicionales: string[];
+  incluyeChaufaGratis?: boolean;
   observaciones: string;
   imagen?: string;
 }
@@ -89,6 +91,7 @@ export default function App() {
   // Modal options state for selected dish
   const [selectedCream, setSelectedCream] = useState<string>("Ají");
   const [selectedAdditionals, setSelectedAdditionals] = useState<string[]>([]);
+  const [includeChaufaGratis, setIncludeChaufaGratis] = useState<boolean>(true);
   const [dishObservation, setDishObservation] = useState<string>("");
   const [modalQuantity, setModalQuantity] = useState<number>(1);
 
@@ -145,19 +148,23 @@ export default function App() {
 
         if (cats.length > 0 || dishes.length > 0) {
           const formattedCategories: Category[] = cats
-            .filter(c => c.nombre.toLowerCase() !== 'información del negocio' && c.nombre.toLowerCase() !== 'informacion')
+            .filter(c => {
+              const lower = c.nombre.toLowerCase();
+              return lower !== 'información del negocio' && lower !== 'informacion' && lower !== 'promociones';
+            })
             .map(c => ({
               id: c.nombre.toLowerCase().replace(/\s+/g, '-'),
               nombre: c.nombre,
               items: dishes
-                .filter(d => d.categoría === c.nombre)
+                .filter(d => d.categoría === c.nombre && !d['nombre del plato'].toLowerCase().includes('chaufa gratis'))
                 .map(d => ({
                   nombre: d['nombre del plato'],
                   descripcion: d.descripción,
                   precio: d.precio,
                   imagen: d['URL de imagen'] || undefined
                 }))
-            }));
+            }))
+            .filter(c => c.items.length > 0);
           setCategories(formattedCategories);
           if (formattedCategories.length > 0) {
             setActiveCategory(formattedCategories[0].id);
@@ -173,11 +180,29 @@ export default function App() {
     loadData();
   }, []);
 
+  const isBroasterDish = useMemo(() => {
+    if (!selectedDish) return false;
+    const name = selectedDish.nombre.toLowerCase();
+    const catId = activeCategory.toLowerCase();
+    return (
+      name.includes("pecho") ||
+      name.includes("encuentro") ||
+      name.includes("alota") ||
+      name.includes("don mega") ||
+      name.includes("mostrito") ||
+      name.includes("broaster") ||
+      name.includes("presa") ||
+      catId.includes("broaster") ||
+      catId.includes("especialidad")
+    );
+  }, [selectedDish, activeCategory]);
+
   const openDishModal = (dish: Dish, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedDish(dish);
     setSelectedCream("Ají");
     setSelectedAdditionals([]);
+    setIncludeChaufaGratis(true);
     setDishObservation("");
     setModalQuantity(1);
   };
@@ -202,19 +227,6 @@ export default function App() {
   const handleAddToCartFromModal = () => {
     if (!selectedDish) return;
 
-    // Validación especial: Chaufa Gratis requiere al menos 1 plato Broaster en el carrito
-    if (selectedDish.nombre.toLowerCase().includes("chaufa gratis")) {
-      const hasBroasterInCart = cart.some(item => {
-        const name = item.nombre.toLowerCase();
-        return name.includes("pecho") || name.includes("encuentro") || name.includes("alota") || name.includes("don mega") || name.includes("mostrito") || name.includes("broaster") || name.includes("presa");
-      });
-
-      if (!hasBroasterInCart) {
-        showToast("⚠️ El Chaufa Gratis requiere incluir al menos 1 plato Broaster en tu pedido.");
-        return;
-      }
-    }
-
     const baseNum = parsePrice(selectedDish.precio);
 
     const additionalsCost = selectedAdditionals.reduce((sum, addName) => {
@@ -222,9 +234,10 @@ export default function App() {
       return sum + (found ? found.precio : 0);
     }, 0);
 
+    const hasChaufa = isBroasterDish ? includeChaufaGratis : false;
     const unitTotal = baseNum + additionalsCost;
     const sortedAdds = [...selectedAdditionals].sort().join(',');
-    const itemId = `${selectedDish.nombre}|${selectedCream}|${sortedAdds}|${dishObservation.trim()}`;
+    const itemId = `${selectedDish.nombre}|${selectedCream}|${sortedAdds}|${hasChaufa ? 'chaufa' : ''}|${dishObservation.trim()}`;
 
     setCart(prev => {
       const existingIndex = prev.findIndex(i => i.id === itemId);
@@ -244,6 +257,7 @@ export default function App() {
           cantidad: modalQuantity,
           crema: selectedCream,
           adicionales: [...selectedAdditionals],
+          incluyeChaufaGratis: hasChaufa,
           observaciones: dishObservation.trim(),
           imagen: selectedDish.imagen
         }
@@ -317,6 +331,7 @@ export default function App() {
     const orderSummary = cart.map(item => {
       let desc = `${item.cantidad}x ${item.nombre}`;
       if (item.crema) desc += ` (Crema: ${item.crema})`;
+      if (item.incluyeChaufaGratis) desc += ` [Con Chaufa Gratis]`;
       if (item.adicionales.length > 0) desc += ` (Adic: ${item.adicionales.join(', ')})`;
       if (item.observaciones) desc += ` [Obs: ${item.observaciones}]`;
       return desc;
@@ -355,6 +370,9 @@ export default function App() {
       const subtotalItem = item.precioUnitarioTotal * item.cantidad;
       message += `*${idx + 1}. ${item.cantidad}x ${item.nombre}* — S/.${subtotalItem.toFixed(2)}\n`;
       message += `   🥣 *Crema:* ${item.crema}\n`;
+      if (item.incluyeChaufaGratis) {
+        message += `   🎁 *Chaufa Gratis:* Sí (¡Regalo de la casa!)\n`;
+      }
 
       if (item.adicionales.length > 0) {
         const addsFormatted = item.adicionales.map(addName => {
@@ -535,26 +553,16 @@ export default function App() {
               <Star className="w-5 h-5 fill-[#F2B33D] text-[#F2B33D]" />
             </button>
 
-            {/* Facebook Button */}
+            {/* TikTok Button */}
             <a
-              href={FACEBOOK_URL}
+              href={TIKTOK_URL}
               target="_blank"
               rel="noreferrer"
-              className="bg-[#1877F2] text-white p-2 rounded-full hover:scale-105 transition shadow"
-              title="Facebook Don Broaster"
+              className="bg-black text-white px-3 py-1.5 rounded-full hover:scale-105 transition shadow flex items-center gap-1.5 text-xs font-bold border border-white/20"
+              title="TikTok Don Broaster"
             >
-              <FacebookIcon className="w-4 h-4 fill-white" />
-            </a>
-
-            {/* WhatsApp Button */}
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-[#25D366] text-white p-2 rounded-full hover:scale-105 transition shadow"
-              title="Contacto WhatsApp"
-            >
-              <Phone className="w-4 h-4 fill-white" />
+              <TikTokIcon className="w-4 h-4 fill-white" />
+              <span>TikTok</span>
             </a>
           </div>
         </div>
@@ -585,45 +593,17 @@ export default function App() {
 
       {/* HERO BANNER SECTION */}
       <section className="relative max-w-4xl mx-auto px-4 pt-4 pb-2">
-        <div className="bg-gradient-to-r from-[#D6282F] via-[#c42127] to-[#271B1C] rounded-3xl p-6 text-white shadow-xl overflow-hidden relative border-2 border-[#F2B33D]/40">
+        <div className="bg-gradient-to-r from-[#D6282F] via-[#c42127] to-[#271B1C] rounded-3xl p-6 sm:p-8 text-white shadow-xl overflow-hidden relative border-2 border-[#F2B33D]/40">
           <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-[#F2B33D]/20 rounded-full blur-2xl"></div>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full"></div>
 
           <div className="relative z-10 max-w-xl">
-            <span className="inline-flex items-center gap-1 bg-[#F2B33D] text-[#271B1C] font-anton text-xs uppercase px-2.5 py-1 rounded-md mb-2 shadow-sm">
-              🔥 ¡Chaufa Gratis hasta agotar stock!
-            </span>
-            <h2 className="font-anton text-3xl sm:text-4xl leading-none text-[#FFFDF8] tracking-wide mb-2">
-              PRESAS CROCANTES Y COMBOS CONTUNDENTES
+            <h2 className="font-anton text-3xl sm:text-5xl leading-tight text-[#FFFDF8] tracking-wide mb-3 drop-shadow-md">
+              🔥 ¡CHAUFA GRATIS HASTA AGOTAR STOCK!
             </h2>
-            <p className="text-xs sm:text-sm text-white/90 font-normal mb-4">
+            <p className="text-xs sm:text-sm text-white/90 font-normal">
               Pollo Broaster con sabor criollo de barrio, salchipapas cargadas y adicionales a tu gusto. ¡Pide directo por WhatsApp!
             </p>
-
-            <div className="flex flex-wrap gap-2 text-[11px]">
-              <div className="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 border border-white/20">
-                <Clock className="w-3 h-3 text-[#F2B33D]" />
-                <span>Lun-Sáb: 6:00 PM - 11:00 PM</span>
-              </div>
-              <a
-                href={MAPS_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 px-3 py-1 rounded-full flex items-center gap-1 border border-white/20 transition"
-              >
-                <MapPin className="w-3 h-3 text-[#F2B33D]" />
-                <span>{MAPS_LOCATION}</span>
-              </a>
-              <a
-                href={FACEBOOK_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="bg-[#1877F2]/80 backdrop-blur-sm hover:bg-[#1877F2] px-3 py-1 rounded-full flex items-center gap-1 border border-white/20 transition text-white"
-              >
-                <FacebookIcon className="w-3 h-3 fill-white" />
-                <span>Facebook Don Broaster</span>
-              </a>
-            </div>
           </div>
         </div>
 
@@ -840,6 +820,29 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* INCLUIR CHAUFA GRATIS (SI ES PLATO BROASTER) */}
+                {isBroasterDish && (
+                  <div className="bg-[#FFFDF8] p-4 rounded-2xl border-2 border-[#F2B33D] space-y-1.5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-xs sm:text-sm text-[#271B1C] flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeChaufaGratis}
+                          onChange={(e) => setIncludeChaufaGratis(e.target.checked)}
+                          className="w-4 h-4 accent-[#D6282F] rounded cursor-pointer"
+                        />
+                        <span>🔥 Incluir Chaufa Gratis</span>
+                      </label>
+                      <span className="text-[10px] bg-[#D6282F] text-white font-anton px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        ¡GRATIS!
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#271B1C]/75 font-medium pl-6">
+                      Arroz chaufa oriental preparado en wok (Promoción válida hasta agotar stock).
+                    </p>
+                  </div>
+                )}
+
                 {/* ADICIONALES (OPCIONALES) */}
                 <div className="bg-[#FFFDF8] p-4 rounded-2xl border border-[#271B1C]/10 space-y-2.5">
                   <div className="flex justify-between items-center">
@@ -1035,6 +1038,15 @@ export default function App() {
                           <span className="font-bold">🥣 Crema:</span>
                           <span className="bg-[#D6282F]/10 text-[#D6282F] px-2 py-0.5 rounded-md font-semibold">{item.crema}</span>
                         </div>
+
+                        {item.incluyeChaufaGratis && (
+                          <div className="flex items-center gap-1 text-[#271B1C]">
+                            <span className="font-bold">🎁 Chaufa Gratis:</span>
+                            <span className="bg-[#F2B33D]/30 text-[#271B1C] px-2 py-0.5 rounded-md font-bold text-[10px]">
+                              ¡Incluido Gratis! 🍗
+                            </span>
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-1 text-[#271B1C]">
                           <span className="font-bold">🥓 Adicionales:</span>
