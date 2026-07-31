@@ -29,10 +29,19 @@ const RESTAURANTE_NAME = "Don Broaster";
 const RESTAURANTE_SLOGAN = "Desde 1999 • Se prepara con cariño";
 const WHATSAPP_NUMBER = "51970590336"; 
 const TIKTOK_URL = "https://www.tiktok.com/@don.broaster";
+const FACEBOOK_URL = "https://www.facebook.com/donbroaster";
 const MAPS_LOCATION = "Pl. de la Composición 102, Surquillo";
 const MAPS_URL = "https://www.google.com/maps/place/Pl.+de+la+Composici%C3%B3n+102,+Surquillo+15047/@-12.1071,-77.0249,17z/data=!4m6!3m5!1s0x9105c86d2f2e6ccb:0x76723896f31be44!8m2!3d-12.1070296!4d-77.0243948!16s%2Fg%2F11rzcvq3yp!5m1!1e1?hl=es&entry=ttu&g_ep=EgoyMDI2MDcyNi4wIKXMDSoASAFQAw%3D%3D";
 const MARQUEE_TEXT = "🍗 DESDE 1999 SIRVIENDO SABOR • POLLO BROASTER, SALCHIPAPAS Y COMBOS CONTUNDENTES • ¡PIDE TU FAVORITO EN DON BROASTER! 🔥🍟 ";
 const BIRTHDAY_COPY = "🎉 ¡Registra tu cumpleaños y recibe una sorpresa bien crocante de Don Broaster! 🍗🍟🎁";
+
+// Iconos SVG para redes sociales
+
+const FacebookIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </svg>
+);
 
 // Helper robusto para parsear precios (evita errores con S/.16.00 o S/. 20.00)
 const parsePrice = (priceStr?: string): number => {
@@ -91,7 +100,7 @@ export default function App() {
   // Modal options state for selected dish
   const [selectedCream, setSelectedCream] = useState<string>("Ají");
   const [selectedAdditionals, setSelectedAdditionals] = useState<string[]>([]);
-  const [includeChaufaGratis, setIncludeChaufaGratis] = useState<boolean>(true);
+  const [includeChaufaGratis, setIncludeChaufaGratis] = useState<boolean>(false);
   const [dishObservation, setDishObservation] = useState<string>("");
   const [modalQuantity, setModalQuantity] = useState<number>(1);
 
@@ -202,7 +211,7 @@ export default function App() {
     setSelectedDish(dish);
     setSelectedCream("Ají");
     setSelectedAdditionals([]);
-    setIncludeChaufaGratis(true);
+    setIncludeChaufaGratis(false);
     setDishObservation("");
     setModalQuantity(1);
   };
@@ -553,17 +562,28 @@ export default function App() {
               <Star className="w-5 h-5 fill-[#F2B33D] text-[#F2B33D]" />
             </button>
 
-            {/* TikTok Button */}
-            <a
-              href={TIKTOK_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="bg-black text-white px-3 py-1.5 rounded-full hover:scale-105 transition shadow flex items-center gap-1.5 text-xs font-bold border border-white/20"
-              title="TikTok Don Broaster"
-            >
-              <TikTokIcon className="w-4 h-4 fill-white" />
-              <span>TikTok</span>
-            </a>
+            {/* Redes Sociales (TikTok & Facebook) */}
+            <div className="flex items-center gap-1.5">
+              <a
+                href={TIKTOK_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 bg-black text-white rounded-full hover:scale-110 transition shadow flex items-center justify-center border border-white/20"
+                title="TikTok Don Broaster"
+              >
+                <TikTokIcon className="w-4 h-4 fill-white" />
+              </a>
+
+              <a
+                href={FACEBOOK_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 bg-[#1877F2] text-white rounded-full hover:scale-110 transition shadow flex items-center justify-center"
+                title="Facebook Don Broaster"
+              >
+                <FacebookIcon className="w-4 h-4 fill-white" />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -1149,25 +1169,61 @@ export default function App() {
                   />
                 </div>
 
-                {/* Botón GPS Google Maps */}
-                <div>
+                {/* Botón GPS Google Maps Mejorado */}
+                <div className="bg-blue-50/90 p-3.5 rounded-2xl border border-blue-200 space-y-2.5 shadow-sm">
+                  <div className="flex items-start gap-2 text-blue-950 text-xs">
+                    <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-[#271B1C]">📍 Enviar mi Ubicación Exacta por GPS</p>
+                      <p className="text-[11px] text-gray-600 leading-snug mt-0.5">
+                        Al dar clic abajo, se capturará tu ubicación exacta por Google Maps para que el repartidor llegue directo a tu puerta sin perderse.
+                      </p>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleGetLocation}
                     disabled={isGettingLocation}
-                    className="w-full bg-blue-50 border border-blue-200 text-blue-700 font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 transition text-xs"
+                    className={`w-full font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-xs shadow ${
+                      checkoutData.gpsLink 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                        : 'bg-[#1877F2] hover:bg-[#1565c0] text-white active:scale-[0.98]'
+                    }`}
                   >
                     {isGettingLocation ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Obteniendo coordenadas GPS exactas...</span>
+                      </>
+                    ) : checkoutData.gpsLink ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                        <span>¡UBICACIÓN GPS CAPTURADA! (Clic para actualizar)</span>
+                      </>
                     ) : (
-                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <>
+                        <MapPin className="w-4 h-4 text-white animate-bounce" />
+                        <span>🎯 Clic aquí para compartir mi ubicación GPS exacta</span>
+                      </>
                     )}
-                    <span>{isGettingLocation ? "Obteniendo GPS..." : "📍 Usar mi Ubicación GPS (Google Maps)"}</span>
                   </button>
+
                   {checkoutData.gpsLink && (
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Ubicación GPS adjunta al pedido
-                    </p>
+                    <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-900 rounded-xl p-2.5 text-[11px] font-medium flex items-center justify-between gap-2 shadow-sm">
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        Ubicación GPS adjunta al pedido
+                      </span>
+                      <a 
+                        href={checkoutData.gpsLink} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-blue-700 underline font-bold hover:text-blue-900 shrink-0"
+                      >
+                        Ver enlace GPS ↗
+                      </a>
+                    </div>
                   )}
                 </div>
 

@@ -106,40 +106,10 @@ export const DEFAULT_MENU_DATA: Category[] = [
         nota: "Encuentro o ala"
       },
       {
-        nombre: "Porción de papa",
-        descripcion: "Porción generosa de papas fritas crujientes doradas al momento.",
-        precio: "S/.9.00",
-        imagen: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=800&q=80"
-      },
-      {
-        nombre: "Tocino",
-        descripcion: "Porción de tocino crocante frito al momento.",
-        precio: "S/.4.00",
-        imagen: "/tocino.webp"
-      },
-      {
-        nombre: "Chorizo",
-        descripcion: "Porción adicional de chorizo parrillero dorado.",
-        precio: "S/.3.00",
-        imagen: "/chorizo.webp"
-      },
-      {
-        nombre: "Plátano",
-        descripcion: "Porción adicional de plátano frito doradito.",
-        precio: "S/.3.00",
-        imagen: "/platano.webp"
-      },
-      {
-        nombre: "Hot dog",
-        descripcion: "Porción adicional de frankfurter frito.",
-        precio: "S/.2.00",
-        imagen: "/hot-dog.webp"
-      },
-      {
         nombre: "Huevo",
         descripcion: "Unidad adicional de huevo frito con yema montada.",
         precio: "S/.2.00",
-        imagen: "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80"
+        imagen: "/huevo.webp"
       }
     ]
   }
