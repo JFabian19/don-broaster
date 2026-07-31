@@ -76,17 +76,6 @@ const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
-const YapeIcon = ({ className = "w-10 h-10" }: { className?: string }) => (
-  <svg className={`rounded-xl shadow-md shrink-0 border border-white/20 ${className}`} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="200" height="200" rx="40" fill="#742284"/>
-    <g transform="translate(95, 25)">
-      <path d="M35 0C54.33 0 70 15.67 70 35C70 54.33 54.33 70 35 70C27.5 70 20.5 67.6 14.8 63.5L5 72L9 53.8C2.8 48.2 0 41.5 0 35C0 15.67 15.67 0 35 0Z" fill="#00D3B6"/>
-      <text x="35" y="44" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="26" fill="#742284" textAnchor="middle">S/</text>
-    </g>
-    <text x="100" y="155" fontFamily="'Arial Black', Arial, sans-serif" fontWeight="900" fontStyle="italic" fontSize="62" fill="#FFFFFF" textAnchor="middle" letterSpacing="-2">yape</text>
-  </svg>
-);
-
 // ==========================================
 
 interface CartItem {
@@ -96,7 +85,7 @@ interface CartItem {
   precioBaseNum: number;
   precioUnitarioTotal: number;
   cantidad: number;
-  crema: string;
+  cremas: string[];
   piezaPollo?: string;
   adicionales: string[];
   incluyeChaufaGratis?: boolean;
@@ -113,7 +102,7 @@ export default function App() {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
 
   // Modal options state for selected dish
-  const [selectedCream, setSelectedCream] = useState<string>("Ají");
+  const [selectedCreams, setSelectedCreams] = useState<string[]>([]);
   const [selectedChickenPiece, setSelectedChickenPiece] = useState<'Encuentro' | 'Ala'>('Encuentro');
   const [selectedAdditionals, setSelectedAdditionals] = useState<string[]>([]);
   const [includeChaufaGratis, setIncludeChaufaGratis] = useState<boolean>(false);
@@ -304,12 +293,24 @@ export default function App() {
   const openDishModal = (dish: Dish, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedDish(dish);
-    setSelectedCream(cremasOpciones[0] || "Ají");
+    setSelectedCreams([...cremasOpciones]);
     setSelectedChickenPiece('Encuentro');
     setSelectedAdditionals([]);
     setIncludeChaufaGratis(false);
     setDishObservation("");
     setModalQuantity(1);
+  };
+
+  const toggleCream = (cremaName: string) => {
+    setSelectedCreams(prev =>
+      prev.includes(cremaName)
+        ? prev.filter(c => c !== cremaName)
+        : [...prev, cremaName]
+    );
+  };
+
+  const selectAllCreams = () => {
+    setSelectedCreams([...cremasOpciones]);
   };
 
   const toggleAdditional = (addName: string) => {
@@ -342,8 +343,9 @@ export default function App() {
     const hasChaufa = isBroasterDish ? includeChaufaGratis : false;
     const piece = isChickenPieceDish ? selectedChickenPiece : undefined;
     const unitTotal = baseNum + additionalsCost;
+    const sortedCreams = [...selectedCreams].sort().join(',');
     const sortedAdds = [...selectedAdditionals].sort().join(',');
-    const itemId = `${selectedDish.nombre}|${piece || ''}|${selectedCream}|${sortedAdds}|${hasChaufa ? 'chaufa' : ''}|${dishObservation.trim()}`;
+    const itemId = `${selectedDish.nombre}|${piece || ''}|${sortedCreams}|${sortedAdds}|${hasChaufa ? 'chaufa' : ''}|${dishObservation.trim()}`;
 
     setCart(prev => {
       const existingIndex = prev.findIndex(i => i.id === itemId);
@@ -361,7 +363,7 @@ export default function App() {
           precioBaseNum: baseNum,
           precioUnitarioTotal: unitTotal,
           cantidad: modalQuantity,
-          crema: selectedCream,
+          cremas: [...selectedCreams],
           piezaPollo: piece,
           adicionales: [...selectedAdditionals],
           incluyeChaufaGratis: hasChaufa,
@@ -438,7 +440,7 @@ export default function App() {
     const orderSummary = cart.map(item => {
       let desc = `${item.cantidad}x ${item.nombre}`;
       if (item.piezaPollo) desc += ` (Presa: ${item.piezaPollo})`;
-      if (item.crema) desc += ` (Crema: ${item.crema})`;
+      if (item.cremas && item.cremas.length > 0) desc += ` (Cremas: ${item.cremas.join(', ')})`;
       if (item.incluyeChaufaGratis) desc += ` [Con Chaufa Gratis]`;
       if (item.adicionales.length > 0) desc += ` (Adic: ${item.adicionales.join(', ')})`;
       if (item.observaciones) desc += ` [Obs: ${item.observaciones}]`;
@@ -477,7 +479,7 @@ export default function App() {
       if (item.piezaPollo) {
         message += `   🍗 *Presa:* ${item.piezaPollo}\n`;
       }
-      message += `   🥣 *Crema:* ${item.crema}\n`;
+      message += `   🥣 *Cremas:* ${item.cremas && item.cremas.length > 0 ? item.cremas.join(', ') : 'Sin cremas'}\n`;
       if (item.incluyeChaufaGratis) {
         message += `   🎁 *Chaufa Gratis:* Sí (¡Regalo de la casa!)\n`;
       }
@@ -959,33 +961,41 @@ export default function App() {
                   </div>
                 )}
 
-                {/* CREMAS SELECTION (1 OBLIGATORIA) */}
+                {/* SELECCIÓN DE CREMAS (OPCIÓN MULTIPLE - PUEDE ELEGIR TODAS) */}
                 <div className="bg-[#FFFDF8] p-4 rounded-2xl border border-[#F2B33D]/40 space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="font-bold text-xs sm:text-sm text-[#271B1C] flex items-center gap-1.5">
-                      <span>🥣 Selecciona 1 Crema por plato</span>
-                      <span className="text-red-500">*</span>
+                      <span>🥣 Selecciona tus Cremas</span>
+                      <span className="text-gray-500 font-normal text-xs">(Elige las que desees)</span>
                     </label>
-                    <span className="text-[10px] bg-[#D6282F]/10 text-[#D6282F] font-bold px-2 py-0.5 rounded-full uppercase">
-                      Obligatorio
-                    </span>
+                    <button
+                      type="button"
+                      onClick={selectAllCreams}
+                      className="text-[10px] bg-[#F2B33D]/20 hover:bg-[#F2B33D]/40 text-[#271B1C] font-bold px-2.5 py-1 rounded-full transition cursor-pointer"
+                    >
+                      ✨ Todas las cremas
+                    </button>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-1">
                     {cremasOpciones.map((crema) => {
-                      const isSelected = selectedCream === crema;
+                      const isSelected = selectedCreams.includes(crema);
                       return (
                         <button
                           key={crema}
                           type="button"
-                          onClick={() => setSelectedCream(crema)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                          onClick={() => toggleCream(crema)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                             isSelected
                               ? 'bg-[#D6282F] text-white shadow-md scale-105'
                               : 'bg-white text-[#271B1C] border border-gray-300 hover:border-[#D6282F]'
                           }`}
                         >
-                          {isSelected && <Check className="w-3.5 h-3.5" />}
+                          <div className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] border ${
+                            isSelected ? 'bg-white text-[#D6282F] border-white' : 'border-gray-400 bg-white'
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 text-[#D6282F] stroke-[3]" />}
+                          </div>
                           <span>{crema}</span>
                         </button>
                       );
@@ -1218,8 +1228,10 @@ export default function App() {
                         )}
 
                         <div className="flex items-center gap-1 text-[#271B1C]">
-                          <span className="font-bold">🥣 Crema:</span>
-                          <span className="bg-[#D6282F]/10 text-[#D6282F] px-2 py-0.5 rounded-md font-semibold">{item.crema}</span>
+                          <span className="font-bold">🥣 Cremas:</span>
+                          <span className="bg-[#D6282F]/10 text-[#D6282F] px-2 py-0.5 rounded-md font-semibold">
+                            {item.cremas && item.cremas.length > 0 ? item.cremas.join(', ') : 'Sin cremas'}
+                          </span>
                         </div>
 
                         {item.incluyeChaufaGratis && (
@@ -1402,7 +1414,7 @@ export default function App() {
                   <div className="bg-gradient-to-br from-[#742284] to-[#4a1254] text-white p-4 rounded-2xl shadow-md border-2 border-[#00D3B6]/60 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <YapeIcon className="w-10 h-10" />
+                        <img src="/yape.png" alt="Yape" className="w-10 h-10 rounded-xl shadow-md border border-white/20 object-contain shrink-0" />
                         <div>
                           <p className="font-anton text-lg leading-tight tracking-wide text-white">YAPE</p>
                           <p className="text-[11px] text-white/80 font-medium">Transferencia directa</p>
