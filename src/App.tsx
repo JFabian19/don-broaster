@@ -18,7 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SheetOption, SHEET_ID } from './services/googleSheets';
+import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SheetOption, getSheetValue, isAvailable, SHEET_ID } from './services/googleSheets';
 import { DEFAULT_MENU_DATA, Category, Dish } from './data/menuData';
 
 // ==========================================
@@ -106,7 +106,7 @@ export default function App() {
 
   // Dynamic options for Cremas & Adicionales from Google Sheets
   const [cremasOpciones, setCremasOpciones] = useState<string[]>(CREMAS_OPCIONES);
-  const [adicionalesOpciones, setAdicionalesOpciones] = useState<{ nombre: string; precio: number }[]>(ADICIONALES_OPCIONES);
+  const [adicionalesOpciones, setAdicionalesOpciones] = useState<{ nombre: string; precio: number; precioStr?: string }[]>(ADICIONALES_OPCIONES);
 
   // States for Checkout Modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -162,30 +162,34 @@ export default function App() {
         if (cats.length > 0 || dishes.length > 0) {
           const formattedCategories: Category[] = cats
             .filter(c => {
-              const lower = c.nombre.toLowerCase();
+              const catName = getSheetValue(c, 'nombre') || getSheetValue(c, 'categoría') || getSheetValue(c, 'categoria');
+              const lower = catName.toLowerCase();
               return lower !== 'información del negocio' && lower !== 'informacion' && lower !== 'promociones';
             })
-            .map(c => ({
-              id: c.nombre.toLowerCase().replace(/\s+/g, '-'),
-              nombre: c.nombre,
-              items: dishes
-                .filter(d => {
-                  if (d.categoría !== c.nombre) return false;
-                  if (d['nombre del plato'].toLowerCase().includes('chaufa gratis')) return false;
-                  // Filtro ON / OFF de la columna 'Disponible'
-                  if (d.disponible !== undefined && d.disponible !== null && String(d.disponible).trim() !== '') {
-                    const disp = String(d.disponible).trim().toUpperCase();
-                    if (disp === 'OFF' || disp === 'NO' || disp === 'FALSE' || disp === '0') return false;
-                  }
-                  return true;
-                })
-                .map(d => ({
-                  nombre: d['nombre del plato'],
-                  descripcion: d.descripción,
-                  precio: d.precio,
-                  imagen: d['URL de imagen'] || undefined
-                }))
-            }))
+            .map(c => {
+              const catName = getSheetValue(c, 'nombre') || getSheetValue(c, 'categoría') || getSheetValue(c, 'categoria');
+              return {
+                id: catName.toLowerCase().replace(/\s+/g, '-'),
+                nombre: catName,
+                items: dishes
+                  .filter(d => {
+                    const dishCat = getSheetValue(d, 'categoría') || getSheetValue(d, 'categoria');
+                    const dishName = getSheetValue(d, 'nombre del plato') || getSheetValue(d, 'nombre');
+                    
+                    if (dishCat.toLowerCase() !== catName.toLowerCase()) return false;
+                    if (dishName.toLowerCase().includes('chaufa gratis')) return false;
+                    
+                    // Filtro inteligente de disponibilidad (Si, SI, si, ON, On, 1 vs No, NO, no, OFF, Off, 0)
+                    return isAvailable(d);
+                  })
+                  .map(d => ({
+                    nombre: getSheetValue(d, 'nombre del plato') || getSheetValue(d, 'nombre'),
+                    descripcion: getSheetValue(d, 'descripción') || getSheetValue(d, 'descripcion'),
+                    precio: getSheetValue(d, 'precio'),
+                    imagen: getSheetValue(d, 'url de imagen') || getSheetValue(d, 'imagen') || getSheetValue(d, 'url') || undefined
+                  }))
+              };
+            })
             .filter(c => c.items.length > 0);
           setCategories(formattedCategories);
           if (formattedCategories.length > 0) {
@@ -193,35 +197,48 @@ export default function App() {
           }
         }
 
-        // Cargar Cremas y Adicionales dinámicos desde la hoja 'Opciones'
+        // Cargar Cremas y Adicionales dinámicos desde la hoja 'Opciones' o 'Cremas y Adicionales'
         try {
-          const opcionesSheet = await fetchSheetData<SheetOption>('Opciones');
+          let opcionesSheet = await fetchSheetData<SheetOption>('Opciones');
+          if (!opcionesSheet || opcionesSheet.length === 0) {
+            opcionesSheet = await fetchSheetData<SheetOption>('Cremas y Adicionales');
+          }
+
           if (opcionesSheet && opcionesSheet.length > 0) {
             const activeOpts = opcionesSheet.filter(o => {
-              if (!o.nombre) return false;
-              if (o.disponible !== undefined && o.disponible !== null && String(o.disponible).trim() !== '') {
-                const disp = String(o.disponible).trim().toUpperCase();
-                if (disp === 'OFF' || disp === 'NO' || disp === 'FALSE' || disp === '0') return false;
-              }
-              return true;
+              const name = getSheetValue(o, 'nombre') || getSheetValue(o, 'opción') || getSheetValue(o, 'opcion');
+              if (!name) return false;
+              return isAvailable(o);
             });
 
             const fetchedCremas = activeOpts
-              .filter(o => o.tipo?.toLowerCase().includes('crema'))
-              .map(o => o.nombre.trim());
+              .filter(o => {
+                const tipo = getSheetValue(o, 'tipo').toLowerCase();
+                return tipo.includes('crema');
+              })
+              .map(o => (getSheetValue(o, 'nombre') || getSheetValue(o, 'opción') || getSheetValue(o, 'opcion')).trim());
 
             const fetchedAdicionales = activeOpts
-              .filter(o => o.tipo?.toLowerCase().includes('adic') || o.tipo?.toLowerCase().includes('extra'))
-              .map(o => ({
-                nombre: o.nombre.trim(),
-                precio: parsePrice(o.precio)
-              }));
+              .filter(o => {
+                const tipo = getSheetValue(o, 'tipo').toLowerCase();
+                return tipo.includes('adic') || tipo.includes('extra');
+              })
+              .map(o => {
+                const name = (getSheetValue(o, 'nombre') || getSheetValue(o, 'opción') || getSheetValue(o, 'opcion')).trim();
+                const priceStr = getSheetValue(o, 'precio');
+                const priceNum = priceStr ? parsePrice(priceStr) : 0;
+                return {
+                  nombre: name,
+                  precio: priceNum,
+                  precioStr: priceStr
+                };
+              });
 
             if (fetchedCremas.length > 0) setCremasOpciones(fetchedCremas);
             if (fetchedAdicionales.length > 0) setAdicionalesOpciones(fetchedAdicionales);
           }
         } catch (err) {
-          console.warn("Hoja 'Opciones' no cargada, usando opciones por defecto:", err);
+          console.warn("Hoja de opciones no encontrada o vacía:", err);
         }
       } catch (error) {
         console.error("Error loading data from sheets:", error);
@@ -728,6 +745,13 @@ export default function App() {
                         src={dish.imagen}
                         alt={dish.nombre}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.dataset.fallback) {
+                            target.dataset.fallback = "true";
+                            target.src = "/don-mega.webp";
+                          }
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#D6282F]/5 to-[#F2B33D]/10">
@@ -812,6 +836,13 @@ export default function App() {
                     src={selectedDish.imagen}
                     alt={selectedDish.nombre}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = "true";
+                        target.src = "/don-mega.webp";
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-[#D6282F]/10">
@@ -919,6 +950,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-2">
                     {adicionalesOpciones.map((add) => {
                       const isChecked = selectedAdditionals.includes(add.nombre);
+                      const hasPrice = add.precio > 0 || (add.precioStr !== undefined && add.precioStr.trim() !== '');
                       return (
                         <button
                           key={add.nombre}
@@ -938,7 +970,9 @@ export default function App() {
                             </div>
                             <span>{add.nombre}</span>
                           </div>
-                          <span className="text-[#D6282F] font-anton text-[11px]">+S/.{add.precio.toFixed(2)}</span>
+                          {hasPrice && (
+                            <span className="text-[#D6282F] font-anton text-[11px]">+S/.{add.precio.toFixed(2)}</span>
+                          )}
                         </button>
                       );
                     })}

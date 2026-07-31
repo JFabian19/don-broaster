@@ -23,6 +23,35 @@ export interface SheetOption {
   disponible?: string;
 }
 
+// Helper para obtener el valor de una columna ignorando mayúsculas/minúsculas, tildes y espacios
+export const getSheetValue = (row: Record<string, any>, keyName: string): string => {
+  if (!row || typeof row !== 'object') return '';
+  const targetKey = keyName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  
+  for (const k of Object.keys(row)) {
+    const normK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (normK === targetKey) {
+      const val = row[k];
+      return val !== undefined && val !== null ? String(val).trim() : '';
+    }
+  }
+  return '';
+};
+
+// Helper robusto para determinar si un registro está disponible (SI, Si, si, ON, On, 1 vs NO, No, no, OFF, Off, 0)
+export const isAvailable = (row: Record<string, any>): boolean => {
+  const raw = getSheetValue(row, 'disponible');
+  if (!raw) return true; // Si está vacía la celda, está DISPONIBLE (true) por defecto
+  
+  const norm = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  
+  if (norm === 'no' || norm === 'off' || norm === 'false' || norm === '0' || norm === 'desactivado' || norm === 'agotado') {
+    return false;
+  }
+  
+  return true;
+};
+
 export const fetchSheetData = async <T>(sheetName: string): Promise<T[]> => {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   
