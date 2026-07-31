@@ -15,7 +15,8 @@ import {
   Flame, 
   CheckCircle2, 
   Sparkles,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SheetOption, getSheetValue, isAvailable, SHEET_ID } from './services/googleSheets';
@@ -28,6 +29,8 @@ import { DEFAULT_MENU_DATA, Category, Dish } from './data/menuData';
 const RESTAURANTE_NAME = "Don Broaster";
 const RESTAURANTE_SLOGAN = "Desde 1999 • Se prepara con cariño";
 const WHATSAPP_NUMBER = "51970590336"; 
+const YAPE_NUMBER = "970590336";
+const YAPE_HOLDER = "Jhonatan jesus andres navarro"; 
 const TIKTOK_URL = "https://www.tiktok.com/@don.broaster";
 const FACEBOOK_URL = "https://www.facebook.com/donbroaster";
 const MAPS_LOCATION = "Pl. de la Composición 102, Surquillo";
@@ -149,6 +152,11 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleCopyYapeNumber = () => {
+    navigator.clipboard.writeText(YAPE_NUMBER);
+    showToast("¡Número Yape 970590336 copiado! 📱");
   };
 
   useEffect(() => {
@@ -432,7 +440,7 @@ export default function App() {
       timestamp: timestamp,
       cliente: checkoutData.nombre.trim(),
       direccion: checkoutData.direccion.trim() || checkoutData.gpsLink,
-      metodoPago: checkoutData.metodoPago + (checkoutData.metodoPago === 'Efectivo' && checkoutData.montoEfectivo.trim() ? ` (S/.${checkoutData.montoEfectivo.trim()})` : ''),
+      metodoPago: 'Yape',
       detalle: orderSummary,
       total: `S/.${total.toFixed(2)}`,
       estado: 'PENDIENTE'
@@ -449,11 +457,8 @@ export default function App() {
       message += `🌐 *Ubicación GPS:* ${checkoutData.gpsLink}\n`;
     }
     
-    message += `💳 *Método de Pago:* ${checkoutData.metodoPago}`;
-    if (checkoutData.metodoPago === 'Efectivo' && checkoutData.montoEfectivo.trim()) {
-      message += ` (Paga con: S/.${checkoutData.montoEfectivo.trim()})`;
-    }
-    message += `\n\n*--- DETALLE DEL PEDIDO ---*\n`;
+    message += `💳 *Método de Pago:* Yape\n\n`;
+    message += `*--- DETALLE DEL PEDIDO ---*\n`;
 
     cart.forEach((item, idx) => {
       const subtotalItem = item.precioUnitarioTotal * item.cantidad;
@@ -1374,48 +1379,51 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Método de Pago */}
+                {/* Método de Pago (Único: Yape) */}
                 <div>
-                  <label className="block text-gray-700 font-bold mb-1.5">
-                    Método de Pago <span className="text-red-500">*</span>
+                  <label className="block text-gray-700 font-bold mb-1.5 flex items-center justify-between">
+                    <span>💳 Método de Pago</span>
+                    <span className="text-[10px] bg-[#742284]/10 text-[#742284] font-bold px-2 py-0.5 rounded-full uppercase">
+                      Exclusivo Yape
+                    </span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCheckoutData({ ...checkoutData, metodoPago: 'Yape' })}
-                      className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition ${
-                        checkoutData.metodoPago === 'Yape'
-                          ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400'
-                      }`}
-                    >
-                      <span>🟣 Yape</span>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setCheckoutData({ ...checkoutData, metodoPago: 'Efectivo' })}
-                      className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition ${
-                        checkoutData.metodoPago === 'Efectivo'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-emerald-400'
-                      }`}
-                    >
-                      <span>💵 Efectivo</span>
-                    </button>
-                  </div>
-
-                  {checkoutData.metodoPago === 'Efectivo' && (
-                    <div className="mt-2">
-                      <input
-                        type="text"
-                        placeholder="¿Con cuánto pagarás? Ej: S/. 50.00"
-                        value={checkoutData.montoEfectivo}
-                        onChange={e => setCheckoutData({ ...checkoutData, montoEfectivo: e.target.value })}
-                        className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-emerald-600 text-xs"
-                      />
+                  <div className="bg-gradient-to-br from-[#742284] to-[#4a1254] text-white p-4 rounded-2xl shadow-md border-2 border-[#00D3B6]/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <img src="/yape.png" alt="Yape" className="w-9 h-9 rounded-xl shadow-md border border-white/20 object-cover" />
+                        <div>
+                          <p className="font-anton text-lg leading-tight tracking-wide text-white">YAPE</p>
+                          <p className="text-[11px] text-white/80 font-medium">Transferencia directa</p>
+                        </div>
+                      </div>
+                      <span className="bg-[#00D3B6] text-[#742284] text-[10px] font-anton px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                        ✔ SELECCIONADO
+                      </span>
                     </div>
-                  )}
+
+                    <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/15 space-y-2">
+                      <div className="flex items-start justify-between text-xs gap-2">
+                        <span className="text-white/70 font-medium shrink-0">Nombre:</span>
+                        <span className="font-bold text-white text-right break-words">{YAPE_HOLDER}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                        <div>
+                          <span className="text-[10px] text-white/70 block uppercase font-bold tracking-wider">Número a Yapear</span>
+                          <span className="font-anton text-xl tracking-wider text-[#00D3B6]">{YAPE_NUMBER}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyYapeNumber}
+                          className="bg-[#00D3B6] hover:bg-[#00bda3] text-[#742284] font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow active:scale-95 cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Total display & Submit */}
