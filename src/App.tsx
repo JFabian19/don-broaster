@@ -83,6 +83,7 @@ interface CartItem {
   precioUnitarioTotal: number;
   cantidad: number;
   crema: string;
+  piezaPollo?: string;
   adicionales: string[];
   incluyeChaufaGratis?: boolean;
   observaciones: string;
@@ -99,6 +100,7 @@ export default function App() {
 
   // Modal options state for selected dish
   const [selectedCream, setSelectedCream] = useState<string>("Ají");
+  const [selectedChickenPiece, setSelectedChickenPiece] = useState<'Encuentro' | 'Ala'>('Encuentro');
   const [selectedAdditionals, setSelectedAdditionals] = useState<string[]>([]);
   const [includeChaufaGratis, setIncludeChaufaGratis] = useState<boolean>(false);
   const [dishObservation, setDishObservation] = useState<string>("");
@@ -267,10 +269,24 @@ export default function App() {
     );
   }, [selectedDish, activeCategory]);
 
+  const isChickenPieceDish = useMemo(() => {
+    if (!selectedDish) return false;
+    const name = selectedDish.nombre.toLowerCase();
+    const desc = (selectedDish.descripcion || '').toLowerCase();
+    const nota = (selectedDish.nota || '').toLowerCase();
+    return (
+      name.includes("don mega") ||
+      name.includes("presa de pollo") ||
+      desc.includes("encuentro o ala") ||
+      nota.includes("encuentro o ala")
+    );
+  }, [selectedDish]);
+
   const openDishModal = (dish: Dish, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedDish(dish);
     setSelectedCream(cremasOpciones[0] || "Ají");
+    setSelectedChickenPiece('Encuentro');
     setSelectedAdditionals([]);
     setIncludeChaufaGratis(false);
     setDishObservation("");
@@ -305,9 +321,10 @@ export default function App() {
     }, 0);
 
     const hasChaufa = isBroasterDish ? includeChaufaGratis : false;
+    const piece = isChickenPieceDish ? selectedChickenPiece : undefined;
     const unitTotal = baseNum + additionalsCost;
     const sortedAdds = [...selectedAdditionals].sort().join(',');
-    const itemId = `${selectedDish.nombre}|${selectedCream}|${sortedAdds}|${hasChaufa ? 'chaufa' : ''}|${dishObservation.trim()}`;
+    const itemId = `${selectedDish.nombre}|${piece || ''}|${selectedCream}|${sortedAdds}|${hasChaufa ? 'chaufa' : ''}|${dishObservation.trim()}`;
 
     setCart(prev => {
       const existingIndex = prev.findIndex(i => i.id === itemId);
@@ -326,6 +343,7 @@ export default function App() {
           precioUnitarioTotal: unitTotal,
           cantidad: modalQuantity,
           crema: selectedCream,
+          piezaPollo: piece,
           adicionales: [...selectedAdditionals],
           incluyeChaufaGratis: hasChaufa,
           observaciones: dishObservation.trim(),
@@ -400,6 +418,7 @@ export default function App() {
 
     const orderSummary = cart.map(item => {
       let desc = `${item.cantidad}x ${item.nombre}`;
+      if (item.piezaPollo) desc += ` (Presa: ${item.piezaPollo})`;
       if (item.crema) desc += ` (Crema: ${item.crema})`;
       if (item.incluyeChaufaGratis) desc += ` [Con Chaufa Gratis]`;
       if (item.adicionales.length > 0) desc += ` (Adic: ${item.adicionales.join(', ')})`;
@@ -439,6 +458,9 @@ export default function App() {
     cart.forEach((item, idx) => {
       const subtotalItem = item.precioUnitarioTotal * item.cantidad;
       message += `*${idx + 1}. ${item.cantidad}x ${item.nombre}* — S/.${subtotalItem.toFixed(2)}\n`;
+      if (item.piezaPollo) {
+        message += `   🍗 *Presa:* ${item.piezaPollo}\n`;
+      }
       message += `   🥣 *Crema:* ${item.crema}\n`;
       if (item.incluyeChaufaGratis) {
         message += `   🎁 *Chaufa Gratis:* Sí (¡Regalo de la casa!)\n`;
@@ -881,6 +903,46 @@ export default function App() {
                   )}
                 </div>
 
+                {/* ELECCIÓN DE PRESA DE POLLO (ENCUENTRO O ALA) */}
+                {isChickenPieceDish && (
+                  <div className="bg-[#FFFDF8] p-4 rounded-2xl border border-[#F2B33D]/40 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="font-bold text-xs sm:text-sm text-[#271B1C] flex items-center gap-1.5">
+                        <span>🍗 Elige tu Presa de Pollo</span>
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[10px] bg-[#D6282F]/10 text-[#D6282F] font-bold px-2 py-0.5 rounded-full uppercase">
+                        Obligatorio
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {(['Encuentro', 'Ala'] as const).map((pieza) => {
+                        const isSelected = selectedChickenPiece === pieza;
+                        return (
+                          <button
+                            key={pieza}
+                            type="button"
+                            onClick={() => setSelectedChickenPiece(pieza)}
+                            className={`p-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 ${
+                              isSelected
+                                ? 'bg-[#D6282F] text-white border-[#D6282F] shadow-md scale-105'
+                                : 'bg-white text-[#271B1C] border-gray-300 hover:border-[#D6282F]'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] border ${
+                              isSelected ? 'bg-white text-[#D6282F] border-white' : 'border-gray-400 bg-white'
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 text-[#D6282F] stroke-[3]" />}
+                            </div>
+                            <span className="font-bold">{pieza}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* CREMAS SELECTION (1 OBLIGATORIA) */}
                 <div className="bg-[#FFFDF8] p-4 rounded-2xl border border-[#F2B33D]/40 space-y-2">
                   <div className="flex justify-between items-center">
@@ -1132,6 +1194,13 @@ export default function App() {
 
                       {/* Customization Details Badges */}
                       <div className="bg-white p-2 rounded-xl border border-gray-100 text-[11px] space-y-1">
+                        {item.piezaPollo && (
+                          <div className="flex items-center gap-1 text-[#271B1C]">
+                            <span className="font-bold">🍗 Presa:</span>
+                            <span className="bg-[#D6282F]/10 text-[#D6282F] px-2 py-0.5 rounded-md font-semibold">{item.piezaPollo}</span>
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-1 text-[#271B1C]">
                           <span className="font-bold">🥣 Crema:</span>
                           <span className="bg-[#D6282F]/10 text-[#D6282F] px-2 py-0.5 rounded-md font-semibold">{item.crema}</span>
