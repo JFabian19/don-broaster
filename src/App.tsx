@@ -117,6 +117,7 @@ export default function App() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutData, setCheckoutData] = useState({
     nombre: '',
+    telefono: '',
     direccion: '',
     metodoPago: 'Yape' as 'Yape' | 'Efectivo',
     montoEfectivo: '',
@@ -428,6 +429,10 @@ export default function App() {
       showToast("Por favor ingresa tu nombre");
       return;
     }
+    if (!checkoutData.telefono.trim()) {
+      showToast("Por favor ingresa tu número de teléfono");
+      return;
+    }
     if (!checkoutData.direccion.trim() && !checkoutData.gpsLink) {
       showToast("Por favor ingresa tu dirección o usa el botón de ubicación GPS");
       return;
@@ -452,6 +457,7 @@ export default function App() {
       orderId: orderId,
       timestamp: timestamp,
       cliente: checkoutData.nombre.trim(),
+      telefono: checkoutData.telefono.trim(),
       direccion: checkoutData.direccion.trim() || checkoutData.gpsLink,
       metodoPago: 'Yape',
       detalle: orderSummary,
@@ -462,6 +468,7 @@ export default function App() {
     let message = `*¡NUEVO PEDIDO ${orderId} - DON BROASTER! 🍗*\n\n`;
     message += `🆔 *Código de Pedido:* ${orderId}\n`;
     message += `👤 *Cliente:* ${checkoutData.nombre.trim()}\n`;
+    message += `📞 *Teléfono:* ${checkoutData.telefono.trim()}\n`;
     
     if (checkoutData.direccion.trim()) {
       message += `📍 *Dirección/Ref:* ${checkoutData.direccion.trim()}\n`;
@@ -1325,6 +1332,21 @@ export default function App() {
                     placeholder="Ej. Carlos Mendoza"
                     value={checkoutData.nombre}
                     onChange={e => setCheckoutData({ ...checkoutData, nombre: e.target.value })}
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#25D366] bg-white text-xs"
+                  />
+                </div>
+
+                {/* Teléfono */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Teléfono / Celular <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Ej. 987654321"
+                    value={checkoutData.telefono}
+                    onChange={e => setCheckoutData({ ...checkoutData, telefono: e.target.value })}
                     className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#25D366] bg-white text-xs"
                   />
                 </div>
