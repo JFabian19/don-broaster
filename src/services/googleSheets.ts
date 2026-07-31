@@ -9,10 +9,18 @@ export interface SheetDish {
   descripción: string;
   precio: string;
   'URL de imagen': string;
+  disponible?: string;
 }
 
 export interface SheetCategory {
   nombre: string;
+}
+
+export interface SheetOption {
+  tipo: string; // 'Crema' o 'Adicional' / 'Extra'
+  nombre: string;
+  precio?: string;
+  disponible?: string;
 }
 
 export const fetchSheetData = async <T>(sheetName: string): Promise<T[]> => {

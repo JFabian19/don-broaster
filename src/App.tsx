@@ -18,7 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SHEET_ID } from './services/googleSheets';
+import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SheetOption, SHEET_ID } from './services/googleSheets';
 import { DEFAULT_MENU_DATA, Category, Dish } from './data/menuData';
 
 // ==========================================
@@ -104,6 +104,10 @@ export default function App() {
   const [dishObservation, setDishObservation] = useState<string>("");
   const [modalQuantity, setModalQuantity] = useState<number>(1);
 
+  // Dynamic options for Cremas & Adicionales from Google Sheets
+  const [cremasOpciones, setCremasOpciones] = useState<string[]>(CREMAS_OPCIONES);
+  const [adicionalesOpciones, setAdicionalesOpciones] = useState<{ nombre: string; precio: number }[]>(ADICIONALES_OPCIONES);
+
   // States for Checkout Modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutData, setCheckoutData] = useState({
@@ -165,7 +169,16 @@ export default function App() {
               id: c.nombre.toLowerCase().replace(/\s+/g, '-'),
               nombre: c.nombre,
               items: dishes
-                .filter(d => d.categoría === c.nombre && !d['nombre del plato'].toLowerCase().includes('chaufa gratis'))
+                .filter(d => {
+                  if (d.categoría !== c.nombre) return false;
+                  if (d['nombre del plato'].toLowerCase().includes('chaufa gratis')) return false;
+                  // Filtro ON / OFF de la columna 'Disponible'
+                  if (d.disponible !== undefined && d.disponible !== null && String(d.disponible).trim() !== '') {
+                    const disp = String(d.disponible).trim().toUpperCase();
+                    if (disp === 'OFF' || disp === 'NO' || disp === 'FALSE' || disp === '0') return false;
+                  }
+                  return true;
+                })
                 .map(d => ({
                   nombre: d['nombre del plato'],
                   descripcion: d.descripción,
@@ -178,6 +191,37 @@ export default function App() {
           if (formattedCategories.length > 0) {
             setActiveCategory(formattedCategories[0].id);
           }
+        }
+
+        // Cargar Cremas y Adicionales dinámicos desde la hoja 'Opciones'
+        try {
+          const opcionesSheet = await fetchSheetData<SheetOption>('Opciones');
+          if (opcionesSheet && opcionesSheet.length > 0) {
+            const activeOpts = opcionesSheet.filter(o => {
+              if (!o.nombre) return false;
+              if (o.disponible !== undefined && o.disponible !== null && String(o.disponible).trim() !== '') {
+                const disp = String(o.disponible).trim().toUpperCase();
+                if (disp === 'OFF' || disp === 'NO' || disp === 'FALSE' || disp === '0') return false;
+              }
+              return true;
+            });
+
+            const fetchedCremas = activeOpts
+              .filter(o => o.tipo?.toLowerCase().includes('crema'))
+              .map(o => o.nombre.trim());
+
+            const fetchedAdicionales = activeOpts
+              .filter(o => o.tipo?.toLowerCase().includes('adic') || o.tipo?.toLowerCase().includes('extra'))
+              .map(o => ({
+                nombre: o.nombre.trim(),
+                precio: parsePrice(o.precio)
+              }));
+
+            if (fetchedCremas.length > 0) setCremasOpciones(fetchedCremas);
+            if (fetchedAdicionales.length > 0) setAdicionalesOpciones(fetchedAdicionales);
+          }
+        } catch (err) {
+          console.warn("Hoja 'Opciones' no cargada, usando opciones por defecto:", err);
         }
       } catch (error) {
         console.error("Error loading data from sheets:", error);
@@ -209,7 +253,7 @@ export default function App() {
   const openDishModal = (dish: Dish, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedDish(dish);
-    setSelectedCream("Ají");
+    setSelectedCream(cremasOpciones[0] || "Ají");
     setSelectedAdditionals([]);
     setIncludeChaufaGratis(false);
     setDishObservation("");
@@ -227,7 +271,7 @@ export default function App() {
   const calculateDishModalUnitPrice = (dish: Dish) => {
     const baseNum = parsePrice(dish.precio);
     const additionalsCost = selectedAdditionals.reduce((sum, addName) => {
-      const found = ADICIONALES_OPCIONES.find(a => a.nombre === addName);
+      const found = adicionalesOpciones.find(a => a.nombre === addName);
       return sum + (found ? found.precio : 0);
     }, 0);
     return baseNum + additionalsCost;
@@ -239,7 +283,7 @@ export default function App() {
     const baseNum = parsePrice(selectedDish.precio);
 
     const additionalsCost = selectedAdditionals.reduce((sum, addName) => {
-      const found = ADICIONALES_OPCIONES.find(a => a.nombre === addName);
+      const found = adicionalesOpciones.find(a => a.nombre === addName);
       return sum + (found ? found.precio : 0);
     }, 0);
 
@@ -819,7 +863,7 @@ export default function App() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {CREMAS_OPCIONES.map((crema) => {
+                    {cremasOpciones.map((crema) => {
                       const isSelected = selectedCream === crema;
                       return (
                         <button
@@ -873,7 +917,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    {ADICIONALES_OPCIONES.map((add) => {
+                    {adicionalesOpciones.map((add) => {
                       const isChecked = selectedAdditionals.includes(add.nombre);
                       return (
                         <button
