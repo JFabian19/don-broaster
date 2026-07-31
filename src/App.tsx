@@ -38,6 +38,36 @@ const MAPS_URL = "https://www.google.com/maps/place/Pl.+de+la+Composici%C3%B3n+1
 const MARQUEE_TEXT = "🍗 DESDE 1999 SIRVIENDO SABOR • POLLO BROASTER, SALCHIPAPAS Y COMBOS CONTUNDENTES • ¡PIDE TU FAVORITO EN DON BROASTER! 🔥🍟 ";
 const BIRTHDAY_COPY = "🎉 ¡Registra tu cumpleaños y recibe una sorpresa bien crocante de Don Broaster! 🍗🍟🎁";
 
+// Helper for checking if store is open for WhatsApp orders (5:30 PM to 10:45 PM Peru Time UTC-5)
+const isStoreOpenPeru = (): boolean => {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Lima',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    let hour = 0;
+    let minute = 0;
+    for (const part of parts) {
+      if (part.type === 'hour') hour = parseInt(part.value, 10);
+      if (part.type === 'minute') minute = parseInt(part.value, 10);
+    }
+    if (hour === 24) hour = 0;
+
+    const currentMinutes = hour * 60 + minute;
+    const startMinutes = 17 * 60 + 30; // 5:30 PM (17:30)
+    const endMinutes = 22 * 60 + 45;   // 10:45 PM (22:45)
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } catch (e) {
+    console.error("Error checking Peru time:", e);
+    return true;
+  }
+};
+
 // Iconos SVG para redes sociales
 
 const FacebookIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -115,6 +145,7 @@ export default function App() {
 
   // States for Checkout Modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showClosedModal, setShowClosedModal] = useState(false);
   const [checkoutData, setCheckoutData] = useState({
     nombre: '',
     telefono: '',
@@ -424,6 +455,11 @@ export default function App() {
 
   const handleConfirmCheckoutAndSendWhatsApp = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isStoreOpenPeru()) {
+      setShowCheckoutModal(false);
+      setShowClosedModal(true);
+      return;
+    }
     if (cart.length === 0) return;
     if (!checkoutData.nombre.trim()) {
       showToast("Por favor ingresa tu nombre");
@@ -1273,6 +1309,18 @@ export default function App() {
               {/* Footer Checkout */}
               {cart.length > 0 && (
                 <div className="p-4 bg-[#FFFDF8] border-t border-[#271B1C]/10 space-y-3">
+                  {!isStoreOpenPeru() && (
+                    <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3 text-xs text-amber-900 flex items-start gap-2.5 shadow-sm">
+                      <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-amber-950">Horario de recepción por WhatsApp</p>
+                        <p className="text-amber-800 leading-tight mt-0.5">
+                          Atendemos pedidos por WhatsApp de <strong>5:30 PM a 10:45 PM</strong> (Hora Peruana). Puedes armar tu carrito con anticipación.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-base font-bold text-[#271B1C]">
                     <span>Total Estimado:</span>
                     <span className="font-anton text-2xl text-[#D6282F]">
@@ -1282,10 +1330,14 @@ export default function App() {
 
                   <button
                     onClick={() => {
+                      if (!isStoreOpenPeru()) {
+                        setShowClosedModal(true);
+                        return;
+                      }
                       setShowSummary(false);
                       setShowCheckoutModal(true);
                     }}
-                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/30 text-sm transition"
+                    className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/30 text-sm transition active:scale-98"
                   >
                     <Phone className="w-4 h-4 fill-white" />
                     <span>Realizar Pedido por WhatsApp</span>
@@ -1684,6 +1736,59 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* CLOSED STORE MODAL */}
+      <AnimatePresence>
+        {showClosedModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative border-4 border-[#D6282F] text-center my-auto"
+            >
+              <button
+                onClick={() => setShowClosedModal(false)}
+                className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-16 h-16 bg-[#D6282F]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-[#D6282F]" />
+              </div>
+
+              <h3 className="font-anton text-2xl text-[#271B1C] mb-2 uppercase tracking-wide">
+                ¡AÚN NO ESTAMOS ATENDIENDO!
+              </h3>
+              
+              <p className="text-sm text-gray-600 mb-4 leading-relaxed font-medium">
+                Lo sentimos, en este momento no estamos recepcionando pedidos por WhatsApp. Nuestro horario de atención a domicilio es:
+              </p>
+
+              <div className="bg-[#FFF8F0] border-2 border-[#F2B33D]/60 rounded-2xl p-4 mb-5 text-center shadow-inner">
+                <p className="font-anton text-2xl text-[#D6282F] tracking-wide">
+                  5:30 PM a 10:45 PM
+                </p>
+                <p className="text-xs text-gray-500 font-semibold mt-1">
+                  🇵🇪 Hora Oficial de Perú
+                </p>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+                Nuestra carta permanece **100% activa** para que consultes todos nuestros platos y vayas armando tu pedido. ¡Te esperamos dentro de nuestro horario de atención!
+              </p>
+
+              <button
+                onClick={() => setShowClosedModal(false)}
+                className="w-full bg-[#D6282F] hover:bg-[#b81e24] text-white font-bold py-3.5 rounded-2xl shadow-lg transition active:scale-98"
+              >
+                Entendido, seguir viendo la carta
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* FOOTER */}
       <footer className="mt-16 bg-[#271B1C] text-white pt-10 pb-16 px-4 border-t-4 border-[#D6282F]">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -1714,8 +1819,9 @@ export default function App() {
 
           <div>
             <h5 className="font-anton text-lg text-[#F2B33D] mb-2 uppercase">Horario de Atención</h5>
-            <p className="text-xs text-gray-300">Lunes a Sábado: 6:00 p. m. - 11:00 p. m.</p>
-            <p className="text-xs text-gray-400 mt-1">Surquillo, Lima - Perú</p>
+            <p className="text-xs text-gray-300 font-medium">Pedidos por WhatsApp:</p>
+            <p className="text-xs font-bold text-[#F2B33D]">5:30 p. m. - 10:45 p. m.</p>
+            <p className="text-xs text-gray-400 mt-1">Surquillo, Lima - Perú (Hora Peruana)</p>
           </div>
 
           <div>
