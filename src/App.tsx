@@ -76,6 +76,17 @@ const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+const YapeIcon = ({ className = "w-10 h-10" }: { className?: string }) => (
+  <svg className={`rounded-xl shadow-md shrink-0 border border-white/20 ${className}`} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="200" height="200" rx="40" fill="#742284"/>
+    <g transform="translate(95, 25)">
+      <path d="M35 0C54.33 0 70 15.67 70 35C70 54.33 54.33 70 35 70C27.5 70 20.5 67.6 14.8 63.5L5 72L9 53.8C2.8 48.2 0 41.5 0 35C0 15.67 15.67 0 35 0Z" fill="#00D3B6"/>
+      <text x="35" y="44" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="26" fill="#742284" textAnchor="middle">S/</text>
+    </g>
+    <text x="100" y="155" fontFamily="'Arial Black', Arial, sans-serif" fontWeight="900" fontStyle="italic" fontSize="62" fill="#FFFFFF" textAnchor="middle" letterSpacing="-2">yape</text>
+  </svg>
+);
+
 // ==========================================
 
 interface CartItem {
@@ -1391,7 +1402,7 @@ export default function App() {
                   <div className="bg-gradient-to-br from-[#742284] to-[#4a1254] text-white p-4 rounded-2xl shadow-md border-2 border-[#00D3B6]/60 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <img src="/yape.png" alt="Yape" className="w-9 h-9 rounded-xl shadow-md border border-white/20 object-cover" />
+                        <YapeIcon className="w-10 h-10" />
                         <div>
                           <p className="font-anton text-lg leading-tight tracking-wide text-white">YAPE</p>
                           <p className="text-[11px] text-white/80 font-medium">Transferencia directa</p>
