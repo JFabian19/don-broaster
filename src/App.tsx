@@ -293,7 +293,7 @@ export default function App() {
   const openDishModal = (dish: Dish, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedDish(dish);
-    setSelectedCreams([...cremasOpciones]);
+    setSelectedCreams([]);
     setSelectedChickenPiece('Encuentro');
     setSelectedAdditionals([]);
     setIncludeChaufaGratis(false);
@@ -1420,9 +1420,6 @@ export default function App() {
                           <p className="text-[11px] text-white/80 font-medium">Transferencia directa</p>
                         </div>
                       </div>
-                      <span className="bg-[#00D3B6] text-[#742284] text-[10px] font-anton px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                        ✔ SELECCIONADO
-                      </span>
                     </div>
 
                     <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/15 space-y-2">
