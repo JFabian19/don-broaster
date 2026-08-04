@@ -469,8 +469,12 @@ export default function App() {
       showToast("Por favor ingresa tu número de teléfono");
       return;
     }
-    if (!checkoutData.direccion.trim() && !checkoutData.gpsLink) {
-      showToast("Por favor ingresa tu dirección o usa el botón de ubicación GPS");
+    if (!checkoutData.gpsLink) {
+      showToast("📍 Es OBLIGATORIO hacer clic en el botón de ubicación GPS antes de enviar tu pedido");
+      return;
+    }
+    if (!checkoutData.direccion.trim()) {
+      showToast("Por favor ingresa tu dirección o referencia");
       return;
     }
 
@@ -1410,7 +1414,7 @@ export default function App() {
                   </label>
                   <textarea
                     rows={2}
-                    required={!checkoutData.gpsLink}
+                    required
                     placeholder="Ej. Pl. de la Composición 102, dpto 301, frente al parque..."
                     value={checkoutData.direccion}
                     onChange={e => setCheckoutData({ ...checkoutData, direccion: e.target.value })}
@@ -1419,13 +1423,18 @@ export default function App() {
                 </div>
 
                 {/* Botón GPS Google Maps Mejorado */}
-                <div className="bg-blue-50/90 p-3.5 rounded-2xl border border-blue-200 space-y-2.5 shadow-sm">
+                <div className={`p-3.5 rounded-2xl border space-y-2.5 shadow-sm ${!checkoutData.gpsLink ? 'bg-amber-50/90 border-amber-300' : 'bg-blue-50/90 border-blue-200'}`}>
                   <div className="flex items-start gap-2 text-blue-950 text-xs">
-                    <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <MapPin className="w-4 h-4 text-red-600 shrink-0 mt-0.5 animate-bounce" />
                     <div>
-                      <p className="font-bold text-[#271B1C]">📍 Enviar mi Ubicación Exacta por GPS</p>
+                      <p className="font-bold text-[#271B1C] flex items-center gap-2 flex-wrap">
+                        <span>📍 Ubicación Exacta por GPS</span>
+                        <span className="text-red-600 text-[10px] font-bold bg-red-100 border border-red-300 px-2 py-0.5 rounded-full uppercase">
+                          * Obligatorio
+                        </span>
+                      </p>
                       <p className="text-[11px] text-gray-600 leading-snug mt-0.5">
-                        Al dar clic abajo, se capturará tu ubicación exacta por Google Maps para que el repartidor llegue directo a tu puerta sin perderse.
+                        Es obligatorio hacer clic abajo para capturar tu ubicación GPS antes de enviar tu pedido.
                       </p>
                     </div>
                   </div>
