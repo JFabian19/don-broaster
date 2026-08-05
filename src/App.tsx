@@ -16,7 +16,8 @@ import {
   CheckCircle2, 
   Sparkles,
   Check,
-  Copy
+  Copy,
+  Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchSheetData, submitSheetData, SheetDish, SheetCategory, SheetOption, getSheetValue, isAvailable, SHEET_ID } from './services/googleSheets';
@@ -149,6 +150,7 @@ export default function App() {
   const [checkoutData, setCheckoutData] = useState({
     nombre: '',
     telefono: '',
+    tipoEntrega: 'delivery' as 'delivery' | 'recojo',
     direccion: '',
     metodoPago: 'Yape' as 'Yape' | 'Efectivo',
     montoEfectivo: '',
@@ -469,13 +471,17 @@ export default function App() {
       showToast("Por favor ingresa tu número de teléfono");
       return;
     }
-    if (!checkoutData.gpsLink) {
-      showToast("📍 Es OBLIGATORIO hacer clic en el botón de ubicación GPS antes de enviar tu pedido");
-      return;
-    }
-    if (!checkoutData.direccion.trim()) {
-      showToast("Por favor ingresa tu dirección o referencia");
-      return;
+    const isRecojo = checkoutData.tipoEntrega === 'recojo';
+
+    if (!isRecojo) {
+      if (!checkoutData.gpsLink) {
+        showToast("📍 Es OBLIGATORIO hacer clic en el botón de ubicación GPS antes de enviar tu pedido");
+        return;
+      }
+      if (!checkoutData.direccion.trim()) {
+        showToast("Por favor ingresa tu dirección o referencia");
+        return;
+      }
     }
 
     const orderId = `#DB-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -492,13 +498,17 @@ export default function App() {
       return desc;
     }).join(' | ');
 
+    const direccionFinal = isRecojo 
+      ? `🏪 RECOGER EN LOCAL (${MAPS_LOCATION})${checkoutData.direccion.trim() ? ` - Notas: ${checkoutData.direccion.trim()}` : ''}`
+      : (checkoutData.direccion.trim() || checkoutData.gpsLink);
+
     // Registrar pedido en Google Sheets con estado PENDIENTE
     submitSheetData('Pedidos', {
       orderId: orderId,
       timestamp: timestamp,
       cliente: checkoutData.nombre.trim(),
       telefono: checkoutData.telefono.trim(),
-      direccion: checkoutData.direccion.trim() || checkoutData.gpsLink,
+      direccion: direccionFinal,
       metodoPago: 'Yape',
       detalle: orderSummary,
       total: `S/.${total.toFixed(2)}`,
@@ -509,12 +519,20 @@ export default function App() {
     message += `🆔 *Código de Pedido:* ${orderId}\n`;
     message += `👤 *Cliente:* ${checkoutData.nombre.trim()}\n`;
     message += `📞 *Teléfono:* ${checkoutData.telefono.trim()}\n`;
+    message += `🛵 *Tipo de Entrega:* ${isRecojo ? '🏪 Recoger en local' : '🛵 Delivery'}\n`;
     
-    if (checkoutData.direccion.trim()) {
-      message += `📍 *Dirección/Ref:* ${checkoutData.direccion.trim()}\n`;
-    }
-    if (checkoutData.gpsLink) {
-      message += `🌐 *Ubicación GPS:* ${checkoutData.gpsLink}\n`;
+    if (isRecojo) {
+      message += `📍 *Lugar de Recojo:* ${MAPS_LOCATION}\n`;
+      if (checkoutData.direccion.trim()) {
+        message += `📝 *Notas de Recojo:* ${checkoutData.direccion.trim()}\n`;
+      }
+    } else {
+      if (checkoutData.direccion.trim()) {
+        message += `📍 *Dirección/Ref:* ${checkoutData.direccion.trim()}\n`;
+      }
+      if (checkoutData.gpsLink) {
+        message += `🌐 *Ubicación GPS:* ${checkoutData.gpsLink}\n`;
+      }
     }
     
     message += `💳 *Método de Pago:* Yape\n\n`;
@@ -1407,83 +1425,157 @@ export default function App() {
                   />
                 </div>
 
-                {/* Ubicación / Referencia */}
+                {/* Tipo de Entrega */}
                 <div>
-                  <label className="block text-gray-700 font-bold mb-1">
-                    Dirección o Referencia de Delivery <span className="text-red-500">*</span>
+                  <label className="block text-gray-700 font-bold mb-1.5 flex items-center justify-between">
+                    <span>🛵 Tipo de Entrega</span>
+                    <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    required
-                    placeholder="Ej. Pl. de la Composición 102, dpto 301, frente al parque..."
-                    value={checkoutData.direccion}
-                    onChange={e => setCheckoutData({ ...checkoutData, direccion: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#25D366] bg-white text-xs"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutData({ ...checkoutData, tipoEntrega: 'delivery' })}
+                      className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2 font-bold text-xs transition-all ${
+                        checkoutData.tipoEntrega === 'delivery'
+                          ? 'bg-[#25D366]/10 border-[#25D366] text-emerald-950 shadow-sm'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-base">🛵</span>
+                      <span>Delivery</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutData({ ...checkoutData, tipoEntrega: 'recojo' })}
+                      className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2 font-bold text-xs transition-all ${
+                        checkoutData.tipoEntrega === 'recojo'
+                          ? 'bg-[#25D366]/10 border-[#25D366] text-emerald-950 shadow-sm'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-base">🏪</span>
+                      <span>Recoger en local</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Botón GPS Google Maps Mejorado */}
-                <div className={`p-3.5 rounded-2xl border space-y-2.5 shadow-sm ${!checkoutData.gpsLink ? 'bg-amber-50/90 border-amber-300' : 'bg-blue-50/90 border-blue-200'}`}>
-                  <div className="flex items-start gap-2 text-blue-950 text-xs">
-                    <MapPin className="w-4 h-4 text-red-600 shrink-0 mt-0.5 animate-bounce" />
+                {checkoutData.tipoEntrega === 'delivery' ? (
+                  <>
+                    {/* Ubicación / Referencia */}
                     <div>
-                      <p className="font-bold text-[#271B1C] flex items-center gap-2 flex-wrap">
-                        <span>📍 Ubicación Exacta por GPS</span>
-                        <span className="text-red-600 text-[10px] font-bold bg-red-100 border border-red-300 px-2 py-0.5 rounded-full uppercase">
-                          * Obligatorio
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-gray-600 leading-snug mt-0.5">
-                        Es obligatorio hacer clic abajo para capturar tu ubicación GPS antes de enviar tu pedido.
-                      </p>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        Dirección o Referencia de Delivery <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        required
+                        placeholder="Ej. Pl. de la Composición 102, dpto 301, frente al parque..."
+                        value={checkoutData.direccion}
+                        onChange={e => setCheckoutData({ ...checkoutData, direccion: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#25D366] bg-white text-xs"
+                      />
                     </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    disabled={isGettingLocation}
-                    className={`w-full font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-xs shadow ${
-                      checkoutData.gpsLink 
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                        : 'bg-[#1877F2] hover:bg-[#1565c0] text-white active:scale-[0.98]'
-                    }`}
-                  >
-                    {isGettingLocation ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Obteniendo coordenadas GPS exactas...</span>
-                      </>
-                    ) : checkoutData.gpsLink ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                        <span>¡UBICACIÓN GPS CAPTURADA! (Clic para actualizar)</span>
-                      </>
-                    ) : (
-                      <>
-                        <MapPin className="w-4 h-4 text-white animate-bounce" />
-                        <span>🎯 Clic aquí para compartir mi ubicación GPS exacta</span>
-                      </>
-                    )}
-                  </button>
+                    {/* Botón GPS Google Maps Mejorado */}
+                    <div className={`p-3.5 rounded-2xl border space-y-2.5 shadow-sm ${!checkoutData.gpsLink ? 'bg-amber-50/90 border-amber-300' : 'bg-blue-50/90 border-blue-200'}`}>
+                      <div className="flex items-start gap-2 text-blue-950 text-xs">
+                        <MapPin className="w-4 h-4 text-red-600 shrink-0 mt-0.5 animate-bounce" />
+                        <div>
+                          <p className="font-bold text-[#271B1C] flex items-center gap-2 flex-wrap">
+                            <span>📍 Ubicación Exacta por GPS</span>
+                            <span className="text-red-600 text-[10px] font-bold bg-red-100 border border-red-300 px-2 py-0.5 rounded-full uppercase">
+                              * Obligatorio
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-gray-600 leading-snug mt-0.5">
+                            Es obligatorio hacer clic abajo para capturar tu ubicación GPS antes de enviar tu pedido.
+                          </p>
+                        </div>
+                      </div>
 
-                  {checkoutData.gpsLink && (
-                    <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-900 rounded-xl p-2.5 text-[11px] font-medium flex items-center justify-between gap-2 shadow-sm">
-                      <span className="flex items-center gap-1.5 font-semibold">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        Ubicación GPS adjunta al pedido
-                      </span>
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={isGettingLocation}
+                        className={`w-full font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-xs shadow ${
+                          checkoutData.gpsLink 
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                            : 'bg-[#1877F2] hover:bg-[#1565c0] text-white active:scale-[0.98]'
+                        }`}
+                      >
+                        {isGettingLocation ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>Obteniendo coordenadas GPS exactas...</span>
+                          </>
+                        ) : checkoutData.gpsLink ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-white" />
+                            <span>¡UBICACIÓN GPS CAPTURADA! (Clic para actualizar)</span>
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="w-4 h-4 text-white animate-bounce" />
+                            <span>🎯 Clic aquí para compartir mi ubicación GPS exacta</span>
+                          </>
+                        )}
+                      </button>
+
+                      {checkoutData.gpsLink && (
+                        <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-900 rounded-xl p-2.5 text-[11px] font-medium flex items-center justify-between gap-2 shadow-sm">
+                          <span className="flex items-center gap-1.5 font-semibold">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            Ubicación GPS adjunta al pedido
+                          </span>
+                          <a 
+                            href={checkoutData.gpsLink} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-blue-700 underline font-bold hover:text-blue-900 shrink-0"
+                          >
+                            Ver enlace GPS ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Recoger en local info */}
+                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
+                      <div className="flex items-center gap-2 font-bold text-amber-900">
+                        <Store className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Recojo en Tienda / Local Don Broaster</span>
+                      </div>
+                      <p className="text-gray-700 text-[11px] leading-relaxed">
+                        📍 <strong>Dirección del local:</strong> {MAPS_LOCATION}
+                      </p>
                       <a 
-                        href={checkoutData.gpsLink} 
+                        href={MAPS_URL} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-blue-700 underline font-bold hover:text-blue-900 shrink-0"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-[11px] font-bold underline"
                       >
-                        Ver enlace GPS ↗
+                        Ver mapa en Google Maps ↗
                       </a>
                     </div>
-                  )}
-                </div>
+
+                    {/* Notas para recojo */}
+                    <div>
+                      <label className="block text-gray-700 font-bold mb-1">
+                        Notas / Indicaciones para el recojo <span className="text-gray-400 font-normal">(Opcional)</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Ej. Paso a recogerlo en 20 minutos..."
+                        value={checkoutData.direccion}
+                        onChange={e => setCheckoutData({ ...checkoutData, direccion: e.target.value })}
+                        className="w-full border border-gray-300 rounded-xl p-2.5 focus:outline-none focus:border-[#25D366] bg-white text-xs"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* Método de Pago (Único: Yape) */}
                 <div>
