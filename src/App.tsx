@@ -433,25 +433,61 @@ export default function App() {
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      showToast("Tu navegador no soporta geolocalización");
+      showToast("Tu navegador no soporta geolocalización. Ingresa tu dirección.");
+      if (checkoutData.direccion.trim()) {
+        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(checkoutData.direccion.trim())}`;
+        setCheckoutData(prev => ({ ...prev, gpsLink: fallbackUrl }));
+      }
       return;
     }
     setIsGettingLocation(true);
+
+    const onSuccess = (position: GeolocationPosition) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+      setCheckoutData(prev => ({ ...prev, gpsLink: mapUrl }));
+      setIsGettingLocation(false);
+      showToast("¡Ubicación GPS obtenida! 📍");
+    };
+
+    // Retry Attempt 3: Cached position fallback
+    const tryCachedFallback = () => {
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        (finalError) => {
+          console.error("All geolocation attempts failed:", finalError);
+          setIsGettingLocation(false);
+          // If address is already written, create fallback search link so process is never stopped
+          if (checkoutData.direccion.trim()) {
+            const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(checkoutData.direccion.trim())}`;
+            setCheckoutData(prev => ({ ...prev, gpsLink: fallbackUrl }));
+          }
+          if (finalError.code === finalError.PERMISSION_DENIED) {
+            showToast("Permiso denegado. Se usará la dirección de referencia escrita ✍️");
+          } else {
+            showToast("No se obtuvo GPS automático. ¡Vuelve a dar clic o ingresa tu dirección abajo! 📍");
+          }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: Infinity }
+      );
+    };
+
+    // Retry Attempt 2: Low accuracy / network position
+    const tryLowAccuracy = (error: GeolocationPositionError) => {
+      console.warn("High accuracy query failed or timed out, trying low accuracy...", error);
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        tryCachedFallback,
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+      );
+    };
+
+    // Attempt 1: High accuracy with 12s timeout for mobile permission prompts
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-        setCheckoutData(prev => ({ ...prev, gpsLink: mapUrl }));
-        setIsGettingLocation(false);
-        showToast("¡Ubicación GPS obtenida! 📍");
-      },
-      (error) => {
-        console.error(error);
-        setIsGettingLocation(false);
-        showToast("No se pudo obtener la ubicación automáticamente");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      onSuccess,
+      tryLowAccuracy,
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
   };
 
@@ -474,13 +510,16 @@ export default function App() {
     const isRecojo = checkoutData.tipoEntrega === 'recojo';
 
     if (!isRecojo) {
-      if (!checkoutData.gpsLink) {
-        showToast("📍 Es OBLIGATORIO hacer clic en el botón de ubicación GPS antes de enviar tu pedido");
-        return;
-      }
       if (!checkoutData.direccion.trim()) {
         showToast("Por favor ingresa tu dirección o referencia");
         return;
+      }
+      // If GPS link wasn't captured automatically, fallback to search link of written address so process is NEVER stopped
+      if (!checkoutData.gpsLink) {
+        const autoGpsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(checkoutData.direccion.trim())}`;
+        setCheckoutData(prev => ({ ...prev, gpsLink: autoGpsLink }));
+        // Continue with autoGpsLink
+        checkoutData.gpsLink = autoGpsLink;
       }
     }
 
@@ -1484,12 +1523,12 @@ export default function App() {
                         <div>
                           <p className="font-bold text-[#271B1C] flex items-center gap-2 flex-wrap">
                             <span>📍 Ubicación Exacta por GPS</span>
-                            <span className="text-red-600 text-[10px] font-bold bg-red-100 border border-red-300 px-2 py-0.5 rounded-full uppercase">
-                              * Obligatorio
+                            <span className="text-emerald-700 text-[10px] font-bold bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full uppercase">
+                              * Recomendado
                             </span>
                           </p>
-                          <p className="text-[11px] text-gray-600 leading-snug mt-0.5">
-                            Es obligatorio hacer clic abajo para capturar tu ubicación GPS antes de enviar tu pedido.
+                          <p className="text-[11px] text-gray-700 leading-snug mt-1 bg-white/60 p-2 rounded-lg border border-amber-200/60">
+                            💡 <strong>Importante:</strong> Por favor <u>activa la ubicación/GPS</u> de tu celular y <u>acepta los permisos de ubicación precisa</u> en la página para encontrarte más rápido.
                           </p>
                         </div>
                       </div>
